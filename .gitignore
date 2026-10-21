@@ -1,0 +1,7 @@
+node_modules/
+/campaign-data/
+renderer/vendor-bundle.js
+/settings.json
+/release/
+*.log
+.DS_Store

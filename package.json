@@ -1,0 +1,41 @@
+{
+  "name": "kurator-session-manager",
+  "version": "0.1.0.0",
+  "description": "Kurator Session Manager — an App for DMs for DND Campaigns, to organize NPCs, Locations and general session notes.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "postinstall": "node scripts/copy-shared.js",
+    "prestart": "node scripts/copy-shared.js",
+    "start": "electron .",
+    "test": "node test/query.test.js && node test/storage.test.js && node test/bundle-scope.test.js && node test/campaignManager.test.js && node test/settings.test.js && node test/dataDir.test.js && node test/contentSearch.test.js && node test/artworkMatch.test.js && node test/modularContent.test.js && node test/modularContentEquivalence.test.js && node test/dcChecks.test.js && node test/entityImages.test.js && node test/imageCrop.test.js && node test/notionImport.test.js && node test/bulkAssign.test.js && node test/inventory.test.js && node test/presencePicker.test.js && node test/groupOrganizing.test.js && node test/diagnostics.test.js && node test/autosave.test.js && node test/characterCard.test.js && node test/transfer.test.js && node test/transferRunner.test.js && node test/directorRemote.test.js && node test/graph.test.js && node test/conditions.test.js && node test/quests.test.js",
+    "dist": "node scripts/copy-shared.js && npx --yes electron-builder@26.15.3 --win portable --x64 --publish never",
+    "example": "node scripts/make-example.js"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0"
+  },
+  "author": "Kurator Session Manager contributors",
+  "license": "MIT",
+  "build": {
+    "appId": "com.kurator.sessionmanager",
+    "productName": "Kurator Session Manager",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json",
+      "src/**/*",
+      "renderer/**/*"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "renderer/icon.ico"
+    },
+    "portable": {
+      "artifactName": "Kurator-Session-Manager-${version}-portable.exe"
+    }
+  }
+}

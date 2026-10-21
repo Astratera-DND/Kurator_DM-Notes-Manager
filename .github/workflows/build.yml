@@ -1,0 +1,35 @@
+name: Build portable Windows app
+
+# Runs when a release is published on GitHub, or by hand from the Actions tab.
+# Tests the code, builds the portable .exe and attaches it to the release.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run dist
+      - name: Keep the exe as a downloadable build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-exe
+          path: release/*.exe
+      - name: Attach the exe to the release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" release/*.exe --clobber
