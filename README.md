@@ -1,11 +1,15 @@
 # Kurator Session Manager
 
-A live session console for Dungeon Masters. Prepare locations, NPCs, scenes, dialogue topics and
-conditions in advance, then run the session from one screen: the right description, the right NPC notes
-and the right dialogue are one click or one keystroke away — and they change as the story moves from
-milestone to milestone.
+This is a Session Notes Organizer for Dungeon Masters. 
+A passion project that I (with lots of help of AI) created for my own homebrew DND campaign. 
+You can create locations, NPCs, Dialog, Sections all based on "milestones" which you can use to track moments in time and much much more. 
+Then you have a deticated "play" screen in which you can jump through you Entities and moments in time. 
+There is a "mark as complete" checkbox that allows you to hide the note once it was read. 
+If you didn't mark something it will come up on the next "day" in case you just missed it. 
 
-Built for a homebrew sci-fi D&D campaign, but nothing in it is setting-specific.
+There is also a nice connection to another Tool, that allows you to control playlists, soundeffects and even concept art if you have that. (optional)
+
+
 
 ![Play mode](docs/screenshots/play-mode.png)
 
@@ -17,12 +21,12 @@ Built for a homebrew sci-fi D&D campaign, but nothing in it is setting-specific.
 - **Content search** — press `Ctrl+K` twice to search the text of everything you prepared and jump straight to it.
 - **Create mode** — entities, content (descriptions, scenes, beats, notes, topics), a library, a visual graph,
   conditions and quests.
-- **Graph view** — see how your content, locations and NPCs connect, drag to rearrange, drag to connect.
 - **Character cards** — 2024-style stat block, voice and personality notes for every NPC.
 - **DC checks** — roll tables with outcomes and conditions, nestable.
 - **Artwork** — point it at a folder of images and new NPCs find their portrait by name
-  ("Mira Selven" finds `MiraSelven.png`, `mira-selven.jpg`, …).
-- **Writing shortcuts** — `@` mentions, `"` dialogue, `Ctrl+L` links, formatting, all in every text field.
+  ("Mira Selven" finds `MiraSelven.png`, `mira-selven.jpg`, …). THis helps me seeing the character I play to get into character a bit easier. 
+- **Writing shortcuts** — `@` mentions, `""` dialogue, `Ctrl+L` links, `Ctrl+D` add DC Check, formatting, all in every text field.
+- **Graph view** — see how your content, locations and NPCs connect, drag to rearrange, drag to connect.
 - **Optional integrations** — control the Director music/scene tool, open Notion pages from entities.
 - Everything is stored as plain JSON on your own computer. No account, no cloud.
 
