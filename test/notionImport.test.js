@@ -893,10 +893,16 @@ const { parseEmbeddedMarkdownTable, serializeInventoryTableToText, parseInventor
 
 // --- Test 45: end-to-end against the real Ersatzteilstände data, ---------
 // verifying against the actual reported real-world case
-{
+// This one needs the author's own Notion export, which is private campaign
+// content and therefore not part of the repository. Set NOTION_EXAMPLE_TEXT to
+// its path to run it; without the file it is skipped.
+const REAL_EXPORT = process.env.NOTION_EXAMPLE_TEXT || '/mnt/user-data/uploads/NotionExampleText.txt';
+if (!require('fs').existsSync(REAL_EXPORT)) {
+  console.log('skip -  end-to-end import of the real export (file not available)');
+} else {
   const fs = require('fs');
   const { campaign, cpTarget } = makeTestCampaign();
-  const rawText = fs.readFileSync('/mnt/user-data/uploads/NotionExampleText.txt', 'utf8');
+  const rawText = fs.readFileSync(REAL_EXPORT, 'utf8');
   const tree = parseOutlineText(rawText);
   const ersatzteilstaendeNode = tree.find((t) => t.text === 'Ersatzteilstände');
   const classified = classifyImportTree([ersatzteilstaendeNode]);

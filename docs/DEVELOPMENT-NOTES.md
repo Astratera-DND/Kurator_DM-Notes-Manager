@@ -1165,3 +1165,6 @@ A location opened as a card or full page (from a mention, a "present here" chip)
 - Data location: `src/dataDir.js`. From source nothing changes (project folder); packaged, `campaign-data/` and `settings.json` live next to the exe (`PORTABLE_EXECUTABLE_DIR`). `KURATOR_DATA_DIR` overrides. The shared-logic bundle is built at packaging time instead of at launch when packaged.
 - `examples/campaign-data/` is the example campaign as plain files (`npm run example` regenerates it); zips always include it and never include the real `campaign-data`.
 - The default Notion path is now built from the current user's profile instead of a hard-coded user name (existing `settings.json` files keep their value).
+
+### v101
+- Fix for the GitHub build: one Notion-import test read the author's private export from a fixed upload path and crashed on any other machine. It now skips when the file is absent (set `NOTION_EXAMPLE_TEXT` to run it). The workflow uses `actions/checkout@v5` and `actions/setup-node@v5` (Node 20 deprecation warning).
