@@ -2,10 +2,12 @@
 
 This is a Session Notes Organizer for Dungeon Masters. 
 A passion project that I (with lots of help of AI) created for my own homebrew DND campaign. 
-You can create locations, NPCs, Dialog, Sections all based on "milestones" which you can use to track moments in time and much much more. 
-Then you have a deticated "play" screen in which you can jump through you Entities and moments in time. 
+You can create locations, NPCs, Dialog, Sections all based on "milestones" which you can use to track moments in time. For example "morning", "midday" etc. 
+It can do much much more Check out the features for more details. 
+
+You then have a deticated "play" screen in which you can jump through your entities to read off without having to go crazy keeping track. 
 There is a "mark as complete" checkbox that allows you to hide the note once it was read. 
-If you didn't mark something it will come up on the next "day" in case you just missed it. 
+If you didn't mark something it will come up on the next "milestone" in case you just missed it. 
 
 There is also a nice connection to another Tool, that allows you to control playlists, soundeffects and even concept art if you have that. (optional)
 
