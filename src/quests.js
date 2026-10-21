@@ -7,6 +7,10 @@
 // the quest lane in the graph and the quest page are derived from these two fields.
 (function () {
 
+// Quests are yellow, with a little hue variety towards orange (picked from the quest's id, so it is stable).
+const QUEST_COLORS = ['yellow', 'gold', 'amber', 'honey', 'orange'];
+function questColorKey(id) { let h = 0; String(id || '').split('').forEach((ch) => { h = (h * 31 + ch.charCodeAt(0)) >>> 0; }); return QUEST_COLORS[h % QUEST_COLORS.length]; }
+
 function isQuest(e) { return !!e && e.type === 'quest'; }
 function questList(campaign) { return Object.values(campaign.entities || {}).filter(isQuest).sort((a, b) => a.name.localeCompare(b.name)); }
 function moduleById(campaign, id) { return (campaign.contentModules || []).find((m) => m.id === id) || null; }
@@ -74,6 +78,8 @@ function moveBefore(campaign, moduleId, beforeId) {
 
 // Repairs: tags pointing at a missing quest are dropped; every quest is numbered 1..n.
 function sanitize(campaign) {
+  // Quests made before they had their own colour get one once; a colour chosen afterwards is kept.
+  Object.values(campaign.entities || {}).forEach((e) => { if (isQuest(e) && !e.questColorSet) { e.color = questColorKey(e.id); e.questColorSet = true; } });
   (campaign.contentModules || []).forEach((m) => {
     if (m.questId && !isQuest((campaign.entities || {})[m.questId])) { delete m.questId; delete m.questIndex; }
     else if (!m.questId && 'questIndex' in m) delete m.questIndex;
@@ -88,7 +94,7 @@ function releaseQuest(campaign, questId) {
   (campaign.contentModules || []).forEach((m) => { if (m.questId === questId) { delete m.questId; delete m.questIndex; } });
 }
 
-const api = { isQuest, questList, itemsOf, assign, unassign, moveTo, step, moveBefore, sanitize, releaseQuest, renumber };
+const api = { QUEST_COLORS, questColorKey, isQuest, questList, itemsOf, assign, unassign, moveTo, step, moveBefore, sanitize, releaseQuest, renumber };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else window.Quests = api;
 })();

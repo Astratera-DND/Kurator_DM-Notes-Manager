@@ -296,5 +296,50 @@ test('loading keeps the new kinds', () => {
   assert.strictEqual(c.conditions.length, 3);
 });
 
+test('specific roll values: at least, at most, exactly, between', () => {
+  const c = DM.emptyCampaign();
+  const d = C.createCondition(c, { name: 'Roll', kind: 'dice', settings: { checkType: 'investigation', dc: 12, critMargin: 0, natCrit: false } });
+  assert.strictEqual(C.makeRollKey('atleast', 15), 'ge15');
+  assert.strictEqual(C.makeRollKey('range', 14, 10), 'r14x10');
+  assert.strictEqual(C.rollKeyLabel('r14x10'), 'Roll 10 to 14');
+  assert.ok(!C.sectionShows(c, d, 'ge15', {}), 'not rolled yet shows nothing');
+  C.rollDice(d, 16);
+  assert.ok(C.sectionShows(c, d, 'ge15', {}) && C.sectionShows(c, d, 'success,le3', {}));
+  assert.ok(!C.sectionShows(c, d, 'eq15', {}) && C.sectionShows(c, d, 'eq16', {}));
+  assert.ok(C.sectionShows(c, d, 'r10x16', {}) && !C.sectionShows(c, d, 'r17x20', {}));
+  assert.ok(C.sectionShows(c, d, '!le5', {}), 'negation works');
+  assert.ok(/Roll 15 or more/.test(C.describeSection(c, d, 'ge15')));
+  C.clearResult(d);
+  assert.ok(!C.sectionShows(c, d, 'ge15', {}), 'a cleared roll no longer matches');
+});
+
+test('tiers stack unless switched off', () => {
+  const Q = require('../src/query');
+  const c = DM.emptyCampaign();
+  const ck = DM.createDCCheck(c, { name: 'I', checkType: 'investigation', mode: 'scale' });
+  [10, 15, 20].forEach((dc) => DM.addDCTableRow(c, ck.id, { dc, text: 't' + dc }));
+  assert.deepStrictEqual(Q.resolveDCCheckTableRows(ck, 16).map((r) => r.dc), [10, 15]);
+  assert.deepStrictEqual(Q.resolveDCCheckTableRows(ck, 5), []);
+  ck.stackTiers = false;
+  assert.deepStrictEqual(Q.resolveDCCheckTableRows(ck, 16).map((r) => r.dc), [15]);
+});
+
+test('quests get a yellow-ish colour of their own and do not use up the palette', () => {
+  const Q = require('../src/quests');
+  const c = DM.emptyCampaign();
+  const q = DM.createEntity(c, { type: 'quest', name: 'Lost Purse' });
+  assert.ok(Q.QUEST_COLORS.includes(q.color), q.color);
+  assert.strictEqual(c.meta.nextColorIndex || 0, 0);
+  const q2 = DM.createEntity(c, { type: 'quest', name: 'Another' });
+  assert.ok(Q.QUEST_COLORS.includes(q2.color));
+  // an old quest with a cycled colour is repaired once; a colour picked afterwards is kept
+  const old = DM.createEntity(c, { type: 'quest', name: 'Old' });
+  old.color = 'blue'; delete old.questColorSet;
+  Q.sanitize(c);
+  assert.ok(Q.QUEST_COLORS.includes(old.color));
+  old.color = 'purple'; Q.sanitize(c);
+  assert.strictEqual(old.color, 'purple');
+});
+
 if (failures) { console.log(`${failures} failed`); process.exit(1); }
 console.log('All condition tests passed.');

@@ -24,6 +24,56 @@ function questControlHTML(moduleId) {
   </div>`;
 }
 
+// The yellow "Quest: Name (n)" label next to a block's title (create and play). Click: the quest's flow.
+function questTagHTML(moduleId) {
+  const m = moduleId && (campaign.contentModules || []).find((x) => x.id === moduleId);
+  const q = m && m.questId && campaign.entities[m.questId];
+  if (!q) return '';
+  const c = colorFor(q.color);
+  return ` <span class="quest-tag" role="button" tabindex="0" style="color:${c.fg};background:${c.bg};border-color:${c.fg}55" title="Show every step of this quest" onclick="event.preventDefault();event.stopPropagation();window.app.questFlow(event,'${m.id}')">Quest: ${esc(q.name || '(unnamed quest)')} (${m.questIndex || 1})</span>`;
+}
+function questTagLine(moduleId) { const t = questTagHTML(moduleId); return t ? `<div class="quest-tagline">${t}</div>` : ''; }
+
+// --- Quest flow: every step of a quest in a row; click a step to go there -------------------
+
+function questFlowTitle(m) {
+  return (m.name && m.name.trim()) || (m.text || m.html || (m.lines && m.lines[0] && m.lines[0].text) || '').replace(/\[\[[^\]]*\]\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40) || '(untitled)';
+}
+function questFlowClose() { const el = document.getElementById('quest-flow'); if (el) el.remove(); document.removeEventListener('mousedown', questFlowOutside, true); document.removeEventListener('keydown', questFlowKey, true); }
+function questFlowOutside(ev) { if (!ev.target.closest || !ev.target.closest('#quest-flow')) questFlowClose(); }
+function questFlowKey(ev) { if (ev.key === 'Escape') { ev.stopPropagation(); questFlowClose(); } }
+
+function questFlowOpen(ev, moduleId) {
+  questFlowClose();
+  const m = (campaign.contentModules || []).find((x) => x.id === moduleId);
+  const q = m && m.questId && campaign.entities[m.questId];
+  if (!q) return;
+  const items = qst().itemsOf(campaign, q.id);
+  const labels = window.Constants.MODULE_TYPE_LABELS;
+  const c = colorFor(q.color);
+  const nodes = items.map((it, i) => {
+    const placed = (campaign.assignments || []).some((a) => a.moduleId === it.id);
+    return `${i ? '<span class="qf-arrow">&#10140;</span>' : ''}<button class="qf-node ${it.id === moduleId ? 'cur' : ''} ${it.complete ? 'done' : ''}" ${placed ? '' : 'disabled title="Not placed anywhere yet"'} data-mid="${it.id}">
+      <span class="qf-idx">${it.questIndex || i + 1}</span><span class="qf-type">${esc(labels[it.type] || it.type)}${it.complete ? ' · done' : ''}</span><span class="qf-title">${esc(questFlowTitle(it))}</span></button>`;
+  }).join('');
+  const el = document.createElement('div');
+  el.id = 'quest-flow'; el.className = 'quest-flow';
+  el.innerHTML = `<div class="qf-head"><b style="color:${c.fg}">${icon('flag')} Quest: ${esc(q.name || '(unnamed quest)')}</b><span class="cond-hint">${items.length} step${items.length === 1 ? '' : 's'} — click one to go there</span>
+    <button class="mini-btn" title="Close" onclick="window.app.questFlowClose()">${icon('x')}</button></div><div class="qf-row">${nodes}</div>`;
+  document.body.appendChild(el);
+  const r = ev && ev.currentTarget && ev.currentTarget.getBoundingClientRect ? ev.currentTarget.getBoundingClientRect() : { left: 80, bottom: 120 };
+  el.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - el.offsetWidth - 8))}px`;
+  el.style.top = `${Math.max(8, Math.min(r.bottom + 6, window.innerHeight - el.offsetHeight - 8))}px`;
+  const cur = el.querySelector('.qf-node.cur'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ inline: 'center', block: 'nearest' });
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('.qf-node'); if (!b || b.disabled) return;
+    const id = b.dataset.mid; const asg = (campaign.assignments || []).find((a) => a.moduleId === id);
+    questFlowClose();
+    if (asg) jumpToContent(id, asg);
+  });
+  setTimeout(() => { document.addEventListener('mousedown', questFlowOutside, true); document.addEventListener('keydown', questFlowKey, true); }, 0);
+}
+
 // --- Searchable chooser (quests for a block, or blocks for a quest) ---------------------
 
 let questMenu = null;   // { mode:'quest'|'module', moduleId?, questId?, query, sel }
@@ -158,6 +208,8 @@ document.addEventListener('drop', (ev) => {
 
 function questActions() {
   return {
+    questFlow(ev, moduleId) { questFlowOpen(ev, moduleId); },
+    questFlowClose() { questFlowClose(); },
     questPick(ev, moduleId) { ev.stopPropagation(); questOpenMenu(ev, { mode: 'quest', moduleId }); },
     questAddPick(ev, questId) { questOpenMenu(ev, { mode: 'module', questId }); },
     questSetIndex(moduleId, v) { qst().moveTo(campaign, moduleId, v); refresh(); },

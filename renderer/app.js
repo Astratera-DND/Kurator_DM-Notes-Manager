@@ -225,7 +225,7 @@ function maybeOpenNotion(entityId) {
   });
 }
 
-// Alt+S / Alt+M / Alt+Q: ask the Director picker what to insert and put the button's
+// Alt+S: ask the Director picker what to insert and put the button's
 // token into the text field. mode 'choose' asks first (scene / music / quickfire).
 // Session and scene stay empty for "current scene" buttons.
 function insertDirectorButton(ta, mode) {
@@ -345,6 +345,63 @@ async function refresh() {
 function scheduleFieldSave(key) {
   if (fieldSaveTimers[key]) clearTimeout(fieldSaveTimers[key]);
   fieldSaveTimers[key] = setTimeout(() => { persistSafely(); }, 500);
+}
+
+// --- Searchable picker (type to filter a long list) -----------------------------------------
+// searchPickHTML(id, options, value, handlerName): options = [{ value, label, group? }].
+// Choosing calls window.app[handlerName](value) (or a global of that name).
+const SP = {};
+function searchPickHTML(id, options, value, handler, opts) {
+  opts = opts || {};
+  SP[id] = { options, handler, hi: 0, shown: [] };
+  const cur = options.find((o) => String(o.value) === String(value == null ? '' : value));
+  return `<span class="sp" id="sp-${id}"><input class="sp-input" id="sp-in-${id}" autocomplete="off" spellcheck="false" placeholder="${esc(opts.placeholder || 'Type to search…')}" value="${esc(cur ? cur.label : '')}" data-label="${esc(cur ? cur.label : '')}" onfocus="spOpen('${id}')" oninput="spFilter('${id}')" onkeydown="spKey(event,'${id}')" onblur="setTimeout(()=>spClose('${id}'),160)"><div class="sp-list" id="sp-list-${id}" style="display:none"></div></span>`;
+}
+function spRender(id, q) {
+  const st = SP[id], list = document.getElementById(`sp-list-${id}`);
+  if (!st || !list) return;
+  const words = (q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  st.shown = st.options.filter((o) => { const hay = `${o.label} ${o.group || ''}`.toLowerCase(); return words.every((w) => hay.includes(w)); });
+  if (st.hi >= st.shown.length) st.hi = Math.max(0, st.shown.length - 1);
+  let html = '', lastGroup = null;
+  st.shown.forEach((o, i) => {
+    if (o.group && o.group !== lastGroup) { html += `<div class="sp-group">${esc(o.group)}</div>`; lastGroup = o.group; }
+    html += `<div class="sp-item ${i === st.hi ? 'hi' : ''}" data-i="${i}" onmousedown="spPick(event,'${id}',${i})">${esc(o.label)}</div>`;
+  });
+  list.innerHTML = html || '<div class="sp-none">Nothing matches.</div>';
+  list.style.display = 'block';
+  const hi = list.querySelector('.sp-item.hi'); if (hi && hi.scrollIntoView) hi.scrollIntoView({ block: 'nearest' });
+}
+function spOpen(id) { const inp = document.getElementById(`sp-in-${id}`); if (!inp) return; if (SP[id]) SP[id].hi = 0; inp.select(); spRender(id, ''); }
+function spFilter(id) { const inp = document.getElementById(`sp-in-${id}`); if (SP[id]) SP[id].hi = 0; spRender(id, inp ? inp.value : ''); }
+function spClose(id) {
+  const list = document.getElementById(`sp-list-${id}`), inp = document.getElementById(`sp-in-${id}`);
+  if (list) list.style.display = 'none';
+  if (inp) inp.value = inp.dataset.label || '';
+}
+function spChoose(id, i) {
+  const st = SP[id]; if (!st || !st.shown[i]) return;
+  const o = st.shown[i], inp = document.getElementById(`sp-in-${id}`), list = document.getElementById(`sp-list-${id}`);
+  if (inp) { inp.value = o.label; inp.dataset.label = o.label; }
+  if (list) list.style.display = 'none';
+  const fn = (window.app && window.app[st.handler]) || window[st.handler];
+  if (fn) fn(o.value);
+}
+function spPick(ev, id, i) { ev.preventDefault(); spChoose(id, i); }
+function spKey(ev, id) {
+  const st = SP[id], list = document.getElementById(`sp-list-${id}`);
+  if (!st) return;
+  const open = list && list.style.display !== 'none';
+  if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+    ev.preventDefault();
+    if (!open) { spOpen(id); return; }
+    st.hi = Math.max(0, Math.min(st.shown.length - 1, st.hi + (ev.key === 'ArrowDown' ? 1 : -1)));
+    spRender(id, document.getElementById(`sp-in-${id}`).value);
+  } else if (ev.key === 'Enter' && open) {
+    ev.preventDefault(); ev.stopPropagation(); spChoose(id, st.hi);
+  } else if (ev.key === 'Escape' && open) {
+    ev.preventDefault(); ev.stopPropagation(); spClose(id);
+  }
 }
 
 // --- init --------------------------------------------------------------
@@ -637,28 +694,47 @@ function renderCampaignBar() {
 function renderHelpBody() {
   const row = (key, desc) => `<div class="help-row"><span class="help-key">${esc(key)}</span><span>${esc(desc)}</span></div>`;
   return `
+    <p class="hint">Tip: <b>right-click inside any text field</b> for a menu with every insert and formatting option below (Shift+right-click gives the plain system menu).</p>
+
     <div class="section-label">Text formatting (any text field)</div>
     ${row('Ctrl+B', 'Bold the selected text')}
     ${row('Ctrl+I', 'Italicize the selected text')}
-    ${row('Ctrl+E', 'Mark the selected text as a DM comment')}
-    <p class="hint">With nothing selected, any of these drop an empty marker with the cursor in the middle, ready to type.</p>
+    ${row('Ctrl+E', 'Mark the selected text as a DM comment (shown only to you)')}
+    ${row('Ctrl+Shift+S', 'Strike through the selected text')}
+    ${row('- ', 'Start a line with a dash for a bullet list; Enter continues the list, Enter on an empty bullet ends it')}
+    ${row('Tab / Shift+Tab', 'Indent / outdent the bullet you are on')}
+    <p class="hint">With nothing selected, bold/italic/DM comment drop an empty marker with the cursor in the middle, ready to type.</p>
 
-    <div class="section-label">Text field triggers</div>
+    <div class="section-label">Insert (any text field)</div>
     ${row('@', 'Mention an NPC or location')}
-    ${row('""', 'Insert speaker-tagged dialogue')}
-    ${row('Ctrl+L', 'Link a section, topic, NPC, or location')}
-    ${row('Alt+S', 'Insert a Director-tool button: asks what it should do (scene, music, quickfire, playlist, SFX, Notion link), then lets you search for it')}
-    ${row('Alt+M / Alt+Q', 'Same, skipping the first question (music / quickfire)')}
-    <p class="hint">The music and quickfire pickers offer "Current scene" (acts on whatever scene is active when pressed) or a specific scene. Ctrl+L and Alt+S/M/Q only work in the Content tab — "the location we're at" needs that context to mean anything.</p>
+    ${row('""', 'Dialogue: pick the speaker, then type the line. Enter ends it, Shift+Enter breaks the line inside it')}
+    ${row('Ctrl+L', 'Link to a section, topic, scene, description, NPC or location')}
+    ${row('Alt+D', 'Insert a DC check (or open the one the cursor is in). A check can contain other DC checks')}
+    ${row('Alt+S', 'Insert a tool button. It asks what the button should do:')}
+    <div class="help-sub"><b>Director tool</b> — scene, music, playlist, atmosphere sound FX, quickfire sound FX, light scenes</div>
+    <div class="help-sub"><b>Notion link</b> — a button that opens your locally installed Notion in the background</div>
+    ${row('Right-click → Make conditional', 'Select text, then show it only for certain results of a condition')}
+    <p class="hint">In the pop-up lists: ↑ ↓ to move, Enter or Tab to choose, Esc to close. Music, quickfire and sound buttons can act on the scene that is active in the Director tool at that moment ("Current scene") or on a specific scene.</p>
 
     <div class="section-label">Navigation (anywhere)</div>
-    ${row('Ctrl/Cmd+K', 'Omnisearch — jump to a location or NPC')}
+    ${row('Ctrl/Cmd+K', 'Jump to a location or NPC')}
+    ${row('Ctrl/Cmd+K again', 'Switch that search to content search: finds text in descriptions, scenes, sections, notes and topics. Enter jumps to the exact spot; content on several entities asks which one first')}
     ${row('Ctrl/Cmd +', 'Step to the next checkpoint')}
     ${row('Ctrl/Cmd -', 'Step to the previous checkpoint')}
+    ${row('Esc', 'Close the open pop-up, search or dialog; leaves a full-screen text field')}
 
     <div class="section-label">Play mode</div>
+    ${row('Hover', 'A mention, quote or "Available here" chip shows a quick card with image and general notes')}
     ${row('Shift+L', "View the current location's loot table")}
     ${row('Middle-click', 'Close an open entity card')}
+
+    <div class="section-label">Create mode</div>
+    ${row('Hover a text field', 'A small button in its corner opens it full-screen for long text')}
+    ${row('Graph: double-click', 'Create content on empty space')}
+    ${row('Graph: drag from a dot', 'Connect a card to an entity; click the dot on a line to set when it applies')}
+    ${row('Graph: Shift-drag', 'Select several cards (Ctrl-click adds to the selection)')}
+    ${row('Graph: Delete', 'Remove the selected cards from the graph (nothing is deleted from your campaign)')}
+    ${row('Graph: Ctrl+Z / Ctrl+Y', 'Undo / redo; Ctrl+A selects all')}
   `;
 }
 
@@ -928,14 +1004,14 @@ function renderCompletableRow(opts) {
   if (opts.complete) {
     return `<label class="carried-row"${idAttr}>
       <input type="checkbox" checked ${onChange}>
-      <span class="beat-label" style="text-decoration:line-through;color:var(--text-muted)">${rich(opts.label)}${srcHtml}</span>
+      <span class="beat-label" style="text-decoration:line-through;color:var(--text-muted)">${rich(opts.label)}${srcHtml}</span>${questTagHTML(opts.id)}
     </label>`;
   }
 
   if (opts.collapsible) {
     const expanded = ui.expandedIds.includes(opts.id);
     const toggleBtn = `<button class="scene-head-toggle" onclick="window.app.toggleExpanded('${opts.id}')">
-      ${icon(expanded ? 'chevronDown' : 'chevronRight')} <span class="scene-head-label">${rich(opts.label)}${srcHtml}</span>
+      ${icon(expanded ? 'chevronDown' : 'chevronRight')} <span class="scene-head-label">${rich(opts.label)}${srcHtml}</span>${questTagHTML(opts.id)}
     </button>`;
     if (!expanded) {
       return `<div class="expandable-row"${idAttr}>${toggleBtn}</div>`;
@@ -953,7 +1029,7 @@ function renderCompletableRow(opts) {
   return `<label class="beat-row"${idAttr}>
     <input type="checkbox" ${onChange}>
     <span class="beat-content">
-      <span class="beat-label">${rich(opts.label)}${srcHtml}</span>
+      <span class="beat-label">${rich(opts.label)}${srcHtml}${questTagHTML(opts.id)}</span>
       ${opts.text ? `<span class="beat-text">${rich(opts.text)}</span>` : ''}
     </span>
   </label>`;
@@ -1012,6 +1088,7 @@ function renderLocationContentHTML(view) {
   }
 
   if (view.arrival) {
+    if (view.descriptionModuleId) html += questTagLine(view.descriptionModuleId);
     html += `<p class="narrative"${view.descriptionModuleId ? ` data-mod="${view.descriptionModuleId}"` : ''}>${view.html}</p>`;
     if (view.descriptionModuleId) {
       html += `<label class="beat-row" style="margin-bottom:10px">
@@ -1069,7 +1146,7 @@ function renderLocationEntityContentHTML(entity) {
   if (!general.length && !currentNotes.length && !carriedNotes.length && !topics.length) return '';
   const cp = campaign.checkpoints.find((c) => c.id === ui.curTime);
   let html = `<div class="section-label">${esc(entity.name)} — location notes</div><div class="loc-entity-notes">`;
-  if (general.length > 0) html += general.map((n) => `<p class="field-text">${rich(n.text)}</p>`).join('');
+  if (general.length > 0) html += general.map((n) => `${questTagLine(n.moduleId)}<p class="field-text">${rich(n.text)}</p>`).join('');
   html += renderNotesSectionHTML(currentNotes, carriedNotes, cp ? cp.label : '');
   if (topics.length > 0) html += renderTopicsHTML(topics, false);
   return html + '</div>';
@@ -1102,7 +1179,7 @@ function renderTopicsHTML(topics, openByDefault) {
 
   html += active.map((t) => `
     <details class="topic" id="${t.moduleId}" ${(campaign.meta.openTopicIds || []).includes(t.moduleId) ? 'open' : ''}>
-      <summary onclick="window.app.topicClicked('${t.moduleId}')">${icon('chevronDown')} ${rich(t.name)}</summary>
+      <summary onclick="window.app.topicClicked('${t.moduleId}')">${icon('chevronDown')} ${rich(t.name)}${questTagHTML(t.moduleId)}</summary>
       <div class="topic-body">
         <p class="field-text">${rich(t.text)}</p>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
@@ -1137,6 +1214,7 @@ function renderTopicsHTML(topics, openByDefault) {
 function renderSceneHTML(scene, carriedFromLabel) {
   if (scene.complete) {
     return renderCompletableRow({
+      id: scene.moduleId,
       complete: true,
       label: scene.name,
       sourceLabel: carriedFromLabel,
@@ -1147,7 +1225,7 @@ function renderSceneHTML(scene, carriedFromLabel) {
   const expanded = ui.expandedIds.includes(scene.moduleId);
   const srcHtml = carriedFromLabel ? ` <span class="src">from ${esc(carriedFromLabel)}</span>` : '';
   const toggleBtn = `<button class="scene-head-toggle" onclick="window.app.toggleExpanded('${scene.moduleId}')">
-    ${icon(expanded ? 'chevronDown' : 'chevronRight')} <span class="scene-head-label">${rich(scene.name)}</span>${srcHtml}
+    ${icon(expanded ? 'chevronDown' : 'chevronRight')} <span class="scene-head-label">${rich(scene.name)}</span>${srcHtml}${questTagHTML(scene.moduleId)}
   </button>`;
 
   if (!expanded) {
@@ -1189,7 +1267,7 @@ function renderTimeNoteRow(n) {
       onChangeAttr: `onchange="window.app.toggleModuleComplete('${n.moduleId}',this.checked)"`
     });
   }
-  return `<p class="field-text">${rich(n.text)}</p>
+  return `${questTagLine(n.moduleId)}<p class="field-text">${rich(n.text)}</p>
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);margin:2px 0 8px">
       <input type="checkbox" onchange="window.app.toggleModuleComplete('${n.moduleId}',this.checked)">
       Mark resolved
@@ -1261,7 +1339,7 @@ function renderEntityCardHTML(entityId) {
 
   if (general.length > 0) {
     html += `<div class="field-label">General</div>`;
-    html += general.map((n) => `<p class="field-text">${rich(n.text)}</p>`).join('');
+    html += general.map((n) => `${questTagLine(n.moduleId)}<p class="field-text">${rich(n.text)}</p>`).join('');
   }
 
   html += renderNotesSectionHTML(currentNotes, carriedNotes, cp ? cp.label : '');
@@ -1299,7 +1377,7 @@ function renderFullPageHTML(entityId) {
 
   if (general.length > 0) {
     html += `<div class="field-label">General</div>`;
-    html += general.map((n) => `<p class="field-text">${rich(n.text)}</p>`).join('');
+    html += general.map((n) => `${questTagLine(n.moduleId)}<p class="field-text">${rich(n.text)}</p>`).join('');
   }
 
   html += renderNotesSectionHTML(currentNotes, carriedNotes, cp ? cp.label : 'Right now');
@@ -1319,7 +1397,7 @@ function renderCreateView() {
   el.innerHTML = `
     <div class="create-tabs">
       <button id="ct-entities" class="${ui.createTab === 'entities' ? 'active' : ''}" onclick="window.app.setCreateTab('entities')">Entities</button>
-      <button id="ct-content" class="${ui.createTab === 'content' ? 'active' : ''}" onclick="window.app.setCreateTab('content')">Content</button>
+      <button id="ct-content" class="${ui.createTab === 'content' ? 'active' : ''}" onclick="window.app.setCreateTab('content')">Scenes &amp; places</button>
       <button id="ct-library" class="${ui.createTab === 'library' ? 'active' : ''}" onclick="window.app.setCreateTab('library')">Library</button>
       <button id="ct-graph" class="${ui.createTab === 'graph' ? 'active' : ''}" onclick="window.app.setCreateTab('graph')">Graph</button>
       <button id="ct-conditions" class="${ui.createTab === 'conditions' ? 'active' : ''}" onclick="window.app.setCreateTab('conditions')">Conditions</button>
@@ -2486,7 +2564,7 @@ function renderEntityEditor(entityId) {
         <textarea id="${n.moduleId}" class="mention-field" style="flex:1" oninput="window.app.onNoteTextInput('${n.moduleId}',this.value)">${esc(n.text)}</textarea>
         <button class="mini-btn" title="Delete note" onclick="window.app.deleteContentModuleUI('${n.moduleId}')">${icon('trash')}</button>
       </div>
-      ${questControlHTML(n.moduleId)}
+      ${questControlHTML(n.moduleId)}${condBlockRowHTML(n.moduleId)}
     </div>`).join('')}
     <div class="inline">
       <button class="icon-btn" onclick="window.app.addGeneralNote('${entity.id}')">${icon('plus')} Add general note</button>
@@ -2502,7 +2580,7 @@ function renderEntityEditor(entityId) {
         ${notesForCp.map((n, idx) => `
         <div class="beat-editor-row">
           <textarea id="${n.moduleId}" class="mention-field" oninput="window.app.onNoteTextInput('${n.moduleId}',this.value)">${esc(n.text)}</textarea>
-          ${questControlHTML(n.moduleId)}
+          ${questControlHTML(n.moduleId)}${condBlockRowHTML(n.moduleId)}
           <div class="inline">
             <select onchange="window.app.updateNoteTimeId('${n.assignmentId}',this.value)">
               ${cps.map((c) => `<option value="${c.id}" ${n.timeId === c.id ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}
@@ -2523,9 +2601,9 @@ function renderEntityEditor(entityId) {
     <p class="hint">Optionally scope a topic to appear starting a specific checkpoint — it stays available at every later one too, it just won't show up before then.</p>
     ${topics.slice().sort((a, b) => a.order - b.order).map((t, idx, sortedTopics) => `
       <div class="beat-editor-row">
-        <input type="text" value="${esc(t.name)}" oninput="window.app.onTopicLabelInput('${t.moduleId}',this.value)">
+        <div class="inline qt-row"><input type="text" style="flex:1" value="${esc(t.name)}" oninput="window.app.onTopicLabelInput('${t.moduleId}',this.value)">${questTagHTML(t.moduleId)}</div>
         <textarea id="${t.moduleId}" class="mention-field" oninput="window.app.onTopicTextInput('${t.moduleId}',this.value)">${esc(t.text)}</textarea>
-        ${questControlHTML(t.moduleId)}
+        ${questControlHTML(t.moduleId)}${condBlockRowHTML(t.moduleId)}
         <div class="inline">
           <select onchange="window.app.updateTopicTimeId('${t.assignmentId}',this.value)">
             <option value="" ${!t.timeId ? 'selected' : ''}>Always available</option>
@@ -2608,6 +2686,7 @@ function renderCreateContent() {
   if (!ui.createContentTimeId && cps.length > 0) ui.createContentTimeId = cps[0].id;
 
   let html = `
+    <p class="hint">Prepare what happens at <b>one location at one milestone</b>: its description, who is present, trackable sections and scenes. A location's own notes and topics live in the Entities tab.</p>
     <div class="form-row"><label>Location</label>
       <input type="text" id="cc-loc-search" placeholder="Search locations… (↑ ↓ to move, Enter to open)" autocomplete="off" value="${esc(ui.locSearch || '')}" style="margin-bottom:6px">
       <div class="presence-list loc-list" id="cc-loc-list">${locListHTML(locs)}</div>
@@ -2934,7 +3013,7 @@ function renderContentEditor() {
         </select>
         <span class="hint" style="margin:0">Saves automatically as you type.</span>
       </div>
-      ${descriptionHere ? questControlHTML(descriptionHere.moduleId) : ''}
+      ${descriptionHere ? questControlHTML(descriptionHere.moduleId) + condBlockRowHTML(descriptionHere.moduleId) : ''}
     </div>
 
     ${renderPresencePickerHTML()}
@@ -2942,9 +3021,9 @@ function renderContentEditor() {
     <div class="section-label">Trackable sections (beats)</div>
     ${beatsHere.length > 0 ? beatsHere.map((b, idx) => `
       <div class="beat-editor-row">
-        <input type="text" value="${esc(b.name)}" placeholder="Short label" oninput="window.app.onBeatFieldInput('${b.moduleId}','name',this.value)">
+        <div class="inline qt-row"><input type="text" style="flex:1" value="${esc(b.name)}" placeholder="Short label" oninput="window.app.onBeatFieldInput('${b.moduleId}','name',this.value)">${questTagHTML(b.moduleId)}</div>
         <textarea id="${b.moduleId}" class="mention-field" placeholder="Full text (optional, for your own reference) — @ mention, &quot;&quot; dialogue, Ctrl+L link, Ctrl+B/I format" oninput="window.app.onBeatFieldInput('${b.moduleId}','text',this.value)">${esc(b.text)}</textarea>
-        ${questControlHTML(b.moduleId)}
+        ${questControlHTML(b.moduleId)}${condBlockRowHTML(b.moduleId)}
         <div class="inline">
           <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" ${b.complete ? 'checked' : ''} onchange="window.app.toggleModuleComplete('${b.moduleId}',this.checked)">Complete</label>
           <button class="mini-btn" title="Move up" ${idx === 0 ? 'disabled' : ''} onclick="window.app.moveAssignmentUI('${b.assignmentId}',-1)">${icon('chevronUp')}</button>
@@ -2962,10 +3041,10 @@ function renderContentEditor() {
     ${scenesHere.map((scene) => `
       <div class="scene-editor">
         <div class="inline" style="margin-bottom:10px">
-          <input type="text" value="${esc(scene.name)}" style="flex:1" oninput="window.app.onSceneLabelInput('${scene.moduleId}',this.value)">
+          <input type="text" value="${esc(scene.name)}" style="flex:1" oninput="window.app.onSceneLabelInput('${scene.moduleId}',this.value)">${questTagHTML(scene.moduleId)}
           <button class="mini-btn" title="Delete scene" onclick="window.app.deleteContentModuleUI('${scene.moduleId}')">${icon('trash')}</button>
         </div>
-        ${questControlHTML(scene.moduleId)}
+        ${questControlHTML(scene.moduleId)}${condBlockRowHTML(scene.moduleId)}
         ${scene.lines.length === 0 ? '<p class="empty-hint">No lines yet — add one below.</p>' : ''}
         ${scene.lines.map((line, idx) => `
           <div class="scene-editor-line">
@@ -3221,7 +3300,7 @@ function renderLibraryModuleRowHTML(m) {
   const selected = ui.librarySelectedModuleId === m.id;
   let html = `<div class="library-row${selected ? ' selected' : ''}" onclick="window.app.selectLibraryModule('${m.id}')">
     <span class="library-row-type">${esc(window.Constants.MODULE_TYPE_LABELS[m.type] || m.type)}</span>
-    <span class="library-row-name">${esc(m.name || '(untitled)')}</span>
+    <span class="library-row-name">${esc(m.name || '(untitled)')}${questTagHTML(m.id)}</span>
     <span class="library-row-summary">${esc(summary)}${m.complete ? ' · Resolved' : ''}</span>
   </div>`;
   // Rendered directly under this specific row rather than at the bottom
@@ -3264,6 +3343,8 @@ function renderLibrarySceneFieldsHTML(module, npcsList) {
   `;
 }
 
+function condBlockRowHTML(moduleId) { return condCardControlHTML((campaign.contentModules || []).find((m) => m.id === moduleId)); }
+
 function renderLibraryModuleEditorHTML(module) {
   const npcsList = Object.values(campaign.entities).filter((e) => e.type === 'npc');
   const assignments = window.Query.getModuleAssignments(campaign, module.id);
@@ -3277,9 +3358,9 @@ function renderLibraryModuleEditorHTML(module) {
       <button class="mini-btn" title="Show in the graph" onclick="window.app.showInGraph('${module.id}')">${icon('graph')}</button>
       <button class="mini-btn" title="Delete this content entirely" onclick="window.app.deleteLibraryModule('${module.id}')">${icon('trash')}</button>
     </div>
-    <div class="form-row"><label>Name</label><input type="text" value="${esc(module.name)}" oninput="window.app.onLibraryModuleNameInput('${module.id}',this.value)"></div>`;
+    <div class="form-row"><label>Name</label><div class="inline qt-row"><input type="text" style="flex:1" value="${esc(module.name)}" oninput="window.app.onLibraryModuleNameInput('${module.id}',this.value)">${questTagHTML(module.id)}</div></div>`;
 
-  html += condCardControlHTML(module);
+  html += condBlockRowHTML(module.id);
   html += questControlHTML(module.id);
   if (module.type === 'scene') {
     html += renderLibrarySceneFieldsHTML(module, npcsList);
@@ -3536,16 +3617,32 @@ function renderAssignFromLibraryResults() {
 
 // How the check's result is worked out for the rest of the campaign: the check has a
 // dice-roll condition of its own (pick it in "Make conditional…" on any text).
-function dcCheckOutcomeControlsHTML(check) {
-  const cond = window.Conditions.ensureDCLink(campaign, check);
-  const s = cond.settings;
-  return `<div class="section-label">Result for the rest of the campaign</div>
-    <p class="hint">Rolling this check sets a condition called <b>${esc(cond.name)}</b> (Critical failure · Failure · Success · Critical success). Select any text, right-click and Make conditional to show it only for some results.</p>
-    <div class="inline" style="flex-wrap:wrap;gap:12px">
-      <label style="font-size:12px;display:flex;align-items:center;gap:4px">Success at DC <input type="number" value="${esc(String(s.dc))}" style="width:60px" onchange="window.app.dcLinkSet('${check.id}','dc',Number(this.value))"></label>
-      <label style="font-size:12px;display:flex;align-items:center;gap:4px" title="A roll this far above (or below) the DC is critical. 0 = only natural 20 / 1.">Critical margin <input type="number" min="0" value="${esc(String(s.critMargin))}" style="width:56px" onchange="window.app.dcLinkSet('${check.id}','critMargin',Number(this.value))"></label>
-      <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" ${s.natCrit ? 'checked' : ''} onchange="window.app.dcLinkSet('${check.id}','natCrit',this.checked)"> Natural 20 / 1 are critical</label>
+// The pass/fail DC with its critical thresholds (kept together: one DC, no contradictions).
+function dcPassFailHeaderHTML(check) {
+  const link = window.Conditions.ensureDCLink(campaign, check);
+  const st = link.settings;
+  return `<div class="inline" style="flex-wrap:wrap;gap:12px">
+      <label style="font-size:13px;display:flex;align-items:center;gap:6px"><b>Success at DC</b> <input type="number" value="${esc(String(st.dc))}" style="width:64px" oninput="window.app.dcPassDCInput('${check.id}',this.value)"></label>
+      <details class="dcc-crit"><summary>Critical results${st.critMargin > 0 || !st.natCrit ? ' (customised)' : ''}</summary>
+        <div class="inline" style="flex-wrap:wrap;gap:12px;margin-top:6px">
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px" title="A roll this far above (or below) the DC is critical. 0 = no margin.">Critical margin <input type="number" min="0" value="${esc(String(st.critMargin))}" style="width:56px" onchange="window.app.dcLinkSet('${check.id}','critMargin',Number(this.value))"></label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" ${st.natCrit ? 'checked' : ''} onchange="window.app.dcLinkSet('${check.id}','natCrit',this.checked)"> Natural 20 / 1 are critical</label>
+        </div>
+      </details>
     </div>`;
+}
+
+// Moves the tier rows into DC order without redrawing them (so nothing loses focus or text).
+function resortDCRows(checkId) {
+  const box = document.getElementById('dcc-rows');
+  const check = campaign.dcChecks.find((c) => c.id === checkId);
+  if (!box || !check) return;
+  const active = document.activeElement;
+  const order = check.table.slice().sort((a, b) => a.dc - b.dc).map((r) => r.id);
+  const els = order.map((id) => box.querySelector(`[data-dcrow="${id}"]`)).filter(Boolean);
+  if (els.every((el, i) => box.children[i] === el)) return;   // already in order
+  els.forEach((el) => box.appendChild(el));
+  if (active && box.contains(active) && document.activeElement !== active) active.focus();
 }
 
 function renderDCCheckEditorModal() {
@@ -3560,9 +3657,11 @@ function renderDCCheckEditorModal() {
     bodyEl.innerHTML = `
       <div class="form-row"><label>Name (optional)</label><input type="text" id="dcc-setup-name" placeholder="e.g. Notice the ambush" value="${esc(state.setupName)}"></div>
       <div class="form-row"><label>Check type</label>
-        <select id="dcc-setup-type">
-          ${window.Constants.CHECK_TYPES.map((t) => `<option value="${t.key}" ${t.key === state.setupType ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}
-        </select>
+        ${searchPickHTML('dcc-setup-type', window.Constants.CHECK_TYPES.map((t) => ({ value: t.key, label: t.label })), state.setupType, 'dcSetupTypeChanged', { placeholder: 'Type to find a check, e.g. perc…' })}
+      </div>
+      <div class="form-row"><label>How does this check work?</label>
+        <label class="dcc-choice"><input type="radio" name="dcc-setup-mode" value="scale" ${state.setupMode === 'scale' ? 'checked' : ''} onchange="window.app.dcSetupModeChanged('scale')"> <span><b>Scales with the roll</b> — the higher the roll, the more is revealed (Investigation, Perception…)</span></label>
+        <label class="dcc-choice"><input type="radio" name="dcc-setup-mode" value="passfail" ${state.setupMode === 'passfail' ? 'checked' : ''} onchange="window.app.dcSetupModeChanged('passfail')"> <span><b>Pass / fail</b> — one DC, the roll succeeds or fails (a Dexterity save, forcing a door…)</span></label>
       </div>
     `;
     footerEl.innerHTML = `<button class="icon-btn" onclick="window.app.createDCCheckFromSetup()">${icon('check')} Continue</button>`;
@@ -3574,52 +3673,65 @@ function renderDCCheckEditorModal() {
 
   titleEl.textContent = (ui.dcCheckEditorStack && ui.dcCheckEditorStack.length) ? 'Edit DC Check (nested — Done returns to the outer check)' : 'Edit DC Check';
   const sortedTable = check.table.slice().sort((a, b) => a.dc - b.dc);
+  const md = window.Conditions.dcCheckMode(check);
+  const link = window.Conditions.ensureDCLink(campaign, check);
 
   let html = `
     <div class="form-row"><label>Name (optional)</label><input type="text" value="${esc(check.name)}" oninput="window.app.onDCCheckFieldInput('${check.id}','name',this.value)"></div>
     <div class="form-row"><label>Check type</label>
-      <select onchange="window.app.onDCCheckFieldInput('${check.id}','checkType',this.value)">
-        ${window.Constants.CHECK_TYPES.map((t) => `<option value="${t.key}" ${t.key === check.checkType ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}
-      </select>
+      ${searchPickHTML('dcc-edit-type', window.Constants.CHECK_TYPES.map((t) => ({ value: t.key, label: t.label })), check.checkType, 'dcEditTypeChanged', { placeholder: 'Type to find a check…' })}
     </div>
 
-    ${dcCheckOutcomeControlsHTML(check)}
+    <div class="section-label">How does this check work?</div>
+    <div class="inline" style="flex-wrap:wrap;gap:14px">
+      <label class="dcc-choice"><input type="radio" name="dcc-mode" ${md.mode === 'scale' ? 'checked' : ''} onchange="window.app.dcSetMode('${check.id}','scale')"> <span><b>Scales with the roll</b></span></label>
+      <label class="dcc-choice"><input type="radio" name="dcc-mode" ${md.mode === 'passfail' ? 'checked' : ''} onchange="window.app.dcSetMode('${check.id}','passfail')"> <span><b>Pass / fail</b></span></label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px" title="Show both kinds of result for this check. They can overlap, so use it only when you really need both."><input type="checkbox" ${check.allowBoth ? 'checked' : ''} ${(check.table.length && check.conditions.length) ? 'disabled' : ''} onchange="window.app.dcSetAllowBoth('${check.id}',this.checked)"> Advanced: use both</label>
+    </div>
+    ${md.both && check.table.length && check.conditions.length ? '<p class="hint">This check holds both kinds of result, so both are shown. Delete the tiers or the outcomes you do not need to make it simple again.</p>' : ''}
 
-    <div class="section-label">DC table</div>
-    <p class="hint">Different DC thresholds reveal different information — in Play mode, the highest DC the roll meets or exceeds is what shows. Rows are kept sorted by DC automatically.</p>
-    ${sortedTable.length === 0 ? '<p class="empty-hint">No rows yet.</p>' : ''}
+    ${md.showScale ? `
+    <div class="section-label">Results by roll — scales with the DC</div>
+    <p class="hint">For checks without a clear success, like Investigation: each tier reveals more as the roll gets higher. In Play, a roll shows the tier it reaches and (unless you turn stacking off) all the lower ones too. Tiers sort themselves by DC. ${md.mode === 'scale' && !check.conditions.some((c) => c.trigger === 'success' || c.trigger === 'failure') && check.table.length ? `The check counts as a success (for conditions elsewhere) from DC ${link.settings.dc}, its lowest tier.` : ''}</p>
+    <label style="font-size:12.5px;display:flex;align-items:center;gap:6px;margin:6px 0"><input type="checkbox" ${check.stackTiers !== false ? 'checked' : ''} onchange="window.app.dcSetStack('${check.id}',this.checked)"> Stack the tiers: a roll also shows every lower tier it reaches</label>
+    ${sortedTable.length === 0 ? '<p class="empty-hint">No tiers yet.</p>' : ''}
+    <div id="dcc-rows">
     ${sortedTable.map((row) => `
-      <div class="beat-editor-row">
-        <input type="number" value="${row.dc}" style="width:64px;flex-shrink:0" oninput="window.app.onDCTableRowDCInput('${check.id}','${row.id}',this.value)">
-        <textarea id="dcc-row-${row.id}" class="mention-field" placeholder="Result — @ mention, &quot;&quot; dialogue, Ctrl+L link, Ctrl+B/I/E format" oninput="window.app.onDCTableRowTextInput('${check.id}','${row.id}',this.value)">${esc(row.text)}</textarea>
-        <button class="mini-btn" title="Delete row" onclick="window.app.deleteDCTableRowUI('${check.id}','${row.id}')">${icon('trash')}</button>
+      <div class="beat-editor-row" data-dcrow="${row.id}">
+        <input type="number" value="${row.dc}" style="width:64px;flex-shrink:0" title="Reached when the roll is at least this" oninput="window.app.onDCTableRowDCInput('${check.id}','${row.id}',this.value)">
+        <textarea id="dcc-row-${row.id}" class="mention-field" placeholder="What the roll reveals — @ mention, &quot;&quot; dialogue, Ctrl+L link, Ctrl+B/I/E format" oninput="window.app.onDCTableRowTextInput('${check.id}','${row.id}',this.value)">${esc(row.text)}</textarea>
+        <button class="mini-btn" title="Delete tier" onclick="window.app.deleteDCTableRowUI('${check.id}','${row.id}')">${icon('trash')}</button>
       </div>`).join('')}
-    <button class="icon-btn" onclick="window.app.addDCTableRowUI('${check.id}')">${icon('plus')} Add row</button>
+    </div>
+    <button class="icon-btn" onclick="window.app.addDCTableRowUI('${check.id}')">${icon('plus')} Add tier</button>` : ''}
 
-    <div class="section-label">Conditions (optional)</div>
-    <p class="hint">Explicit pass/fail outcomes — supports repeat failures/successes ("2nd fail does Y" alongside "1st fail does X") and special natural 1 / natural 20 results.</p>
-    ${check.conditions.length === 0 ? '<p class="empty-hint">No conditions yet.</p>' : ''}
+    ${md.showPassFail ? `
+    <div class="section-label">Pass / fail — one DC</div>
+    <p class="hint">For checks with a clear success, like a Dexterity save. One DC for the whole check; add what happens on failure and success, also for repeats ("the 2nd failure…") and natural 1 / natural 20.</p>
+    ${dcPassFailHeaderHTML(check)}
+    ${check.conditions.length === 0 ? '<p class="empty-hint">No outcomes yet — add one below.</p>' : ''}
     ${check.conditions.map((cond) => `
       <div class="beat-editor-row">
         <div class="inline" style="flex-wrap:wrap">
           <select onchange="window.app.onDCConditionFieldInput('${check.id}','${cond.id}','trigger',this.value)">
-            <option value="failure" ${cond.trigger === 'failure' ? 'selected' : ''}>Failure below DC</option>
-            <option value="success" ${cond.trigger === 'success' ? 'selected' : ''}>Success at/above DC</option>
+            <option value="failure" ${cond.trigger === 'failure' ? 'selected' : ''}>When it fails</option>
+            <option value="success" ${cond.trigger === 'success' ? 'selected' : ''}>When it succeeds</option>
             <option value="nat1" ${cond.trigger === 'nat1' ? 'selected' : ''}>Natural 1</option>
             <option value="nat20" ${cond.trigger === 'nat20' ? 'selected' : ''}>Natural 20</option>
           </select>
-          ${(cond.trigger === 'failure' || cond.trigger === 'success') ? `<label style="font-size:12px;display:flex;align-items:center;gap:4px">DC <input type="number" value="${cond.dc}" style="width:56px" oninput="window.app.onDCConditionFieldInput('${check.id}','${cond.id}','dc',this.value)"></label>` : ''}
-          <label style="font-size:12px;display:flex;align-items:center;gap:4px">Occurrence <input type="number" min="1" value="${cond.occurrence}" style="width:48px" oninput="window.app.onDCConditionFieldInput('${check.id}','${cond.id}','occurrence',this.value)"></label>
-          <button class="mini-btn" title="Delete condition" onclick="window.app.deleteDCConditionUI('${check.id}','${cond.id}')">${icon('trash')}</button>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px" title="1 = the first time it happens, 2 = the second time, and so on">the <input type="number" min="1" value="${cond.occurrence}" style="width:48px" oninput="window.app.onDCConditionFieldInput('${check.id}','${cond.id}','occurrence',this.value)"> time it happens</label>
+          <button class="mini-btn" title="Delete outcome" onclick="window.app.deleteDCConditionUI('${check.id}','${cond.id}')">${icon('trash')}</button>
         </div>
-        <textarea id="dcc-cond-${cond.id}" class="mention-field" placeholder="Outcome text — same full formatting support as everywhere else" oninput="window.app.onDCConditionTextInput('${check.id}','${cond.id}',this.value)">${esc(cond.text)}</textarea>
+        <textarea id="dcc-cond-${cond.id}" class="mention-field" placeholder="What happens — same full formatting support as everywhere else" oninput="window.app.onDCConditionTextInput('${check.id}','${cond.id}',this.value)">${esc(cond.text)}</textarea>
       </div>`).join('')}
     <div class="inline" style="flex-wrap:wrap">
-      <button class="icon-btn" onclick="window.app.addDCConditionUI('${check.id}','failure')">${icon('plus')} Failure</button>
-      <button class="icon-btn" onclick="window.app.addDCConditionUI('${check.id}','success')">${icon('plus')} Success</button>
-      <button class="icon-btn" onclick="window.app.addDCConditionUI('${check.id}','nat1')">${icon('plus')} Nat 1</button>
-      <button class="icon-btn" onclick="window.app.addDCConditionUI('${check.id}','nat20')">${icon('plus')} Nat 20</button>
-    </div>
+      <button class="icon-btn" onclick="window.app.addDCConditionUI('${check.id}','failure')">${icon('plus')} On failure</button>
+      <button class="icon-btn" onclick="window.app.addDCConditionUI('${check.id}','success')">${icon('plus')} On success</button>
+      <button class="icon-btn" onclick="window.app.addDCConditionUI('${check.id}','nat1')">${icon('plus')} Natural 1</button>
+      <button class="icon-btn" onclick="window.app.addDCConditionUI('${check.id}','nat20')">${icon('plus')} Natural 20</button>
+    </div>` : ''}
+
+    <p class="hint" style="margin-top:14px">Rolling this check also sets a condition called <b>${esc(link.name)}</b> (Critical failure · Failure · Success · Critical success). Select any text, right-click and Make conditional to show it only for some results.</p>
 
     ${check.rollLog.length > 0 ? `
       <div class="section-label">Roll log (${check.rollLog.length})</div>
@@ -3646,8 +3758,8 @@ function renderDCCheckEditorModal() {
   } else {
     footerEl.innerHTML = `
       <button class="icon-btn" onclick="window.app.finishDCCheckEditor()">${icon('check')} Done</button>
-      <button class="mini-btn" onclick="window.app.startDeleteDCCheck('${check.id}')">Delete this check</button>
-      ${check.rollLog.length > 0 ? `<button class="mini-btn" onclick="window.app.startClearDCRollLogUI('${check.id}')">Clear log</button>` : ''}
+      <button class="mini-btn txt" onclick="window.app.startDeleteDCCheck('${check.id}')">Delete this check</button>
+      ${check.rollLog.length > 0 ? `<button class="mini-btn txt" onclick="window.app.startClearDCRollLogUI('${check.id}')">Clear log</button>` : ''}
     `;
   }
 }
@@ -3673,7 +3785,7 @@ function describeDCConditionTrigger(condition) {
   if (condition.trigger === 'nat1') return 'Natural 1';
   if (condition.trigger === 'nat20') return 'Natural 20';
   const kind = condition.trigger === 'failure' ? 'fail' : 'success';
-  return `${describeOrdinal(condition.occurrence)} ${kind} (DC ${condition.dc})`;
+  return `${describeOrdinal(condition.occurrence)} ${kind}`;
 }
 
 function renderDCCheckPlayModal() {
@@ -3710,10 +3822,22 @@ function renderDCCheckPlayModal() {
     ? `<span class="confirm-row">Clear the roll log? This cannot be undone.</span>
        <button class="mini-btn" onclick="window.app.confirmClearDCRollLogPlayUI('${check.id}')">${icon('check')}</button>
        <button class="mini-btn" onclick="window.app.cancelDCPlayConfirm()">${icon('x')}</button>`
-    : `<button class="mini-btn" onclick="window.app.startClearDCRollLogPlay('${check.id}')">Clear log</button>`;
+    : `<button class="mini-btn txt" onclick="window.app.startClearDCRollLogPlay('${check.id}')">Clear log</button>`;
 
   const input = document.getElementById('dc-play-rolled');
   if (input) input.focus();
+}
+
+// Collapsed row: label + first words. Open when the typed roll selects it, or when
+// the DM clicked it to peek at the outcome before the players roll.
+function dcPlayFoldHTML(key, label, text, open, hit) {
+  const st = ui.dcCheckPlay;
+  const isOpen = open || (st.peek && st.peek[key]);
+  const preview = String(text || '').replace(/\s+/g, ' ').slice(0, 60);
+  return `<div class="dc-play-fold ${isOpen ? 'open' : ''} ${hit ? 'dc-play-row-resolved' : ''}" onclick="window.app.toggleDCPlayPeek('${key}')">
+      <div class="dc-play-fold-head"><span class="dc-play-row-dc">${esc(label)}</span>${isOpen ? '' : `<span class="dc-play-fold-preview">${esc(preview)}${(text || '').length > 60 ? '…' : ''}</span>`}<span class="dc-play-fold-caret">${isOpen ? '▾' : '▸'}</span></div>
+      ${isOpen ? `<div class="dc-play-row-text">${rich(text || '')}</div>` : ''}
+    </div>`;
 }
 
 // Rebuilt on every keystroke in the Rolled input — kept in its own
@@ -3725,36 +3849,61 @@ function renderDCCheckPlayTable() {
   if (!state || !tableEl) return;
   const check = campaign.dcChecks.find((c) => c.id === state.checkId);
   if (!check) return;
+  if (!state.peek) state.peek = {};
 
   const draft = state.rolledDraft;
   const numericDraft = (draft !== '' && draft !== null && draft !== undefined) ? parseInt(draft, 10) : null;
-  const sortedTable = check.table.slice().sort((a, b) => a.dc - b.dc);
+  const hasRoll = numericDraft !== null && !Number.isNaN(numericDraft);
+  const md = window.Conditions.dcCheckMode(check);
+  const link = window.Conditions.ensureDCLink(campaign, check);
+  let html = '';
 
-  let html = `<div class="section-label">DC table</div>`;
-  if (sortedTable.length === 0) {
-    html += `<p class="empty-hint">No rows defined for this check.</p>`;
-  } else if (numericDraft === null || Number.isNaN(numericDraft)) {
-    html += sortedTable.map((row) => `
-      <div class="dc-play-row">
-        <span class="dc-play-row-dc">DC ${row.dc}</span>
-        <span class="dc-play-row-text">${rich(row.text)}</span>
-      </div>`).join('');
-  } else {
-    const resolved = window.Query.resolveDCCheckTableRow(check, numericDraft);
-    html += resolved
-      ? `<div class="dc-play-row dc-play-row-resolved">
-          <span class="dc-play-row-dc">DC ${resolved.dc}</span>
-          <span class="dc-play-row-text">${rich(resolved.text)}</span>
-        </div>`
-      : `<p class="empty-hint">Rolled ${esc(String(numericDraft))} doesn't meet the lowest DC (${sortedTable[0].dc}).</p>`;
+  if (md.showScale) {
+    const sortedTable = check.table.slice().sort((a, b) => a.dc - b.dc);
+    const resolvedRows = hasRoll ? window.Query.resolveDCCheckTableRows(check, numericDraft) : [];
+    const resolvedIds = new Set(resolvedRows.map((r) => r.id));
+    html += `<div class="section-label">Results by roll</div>`;
+    if (sortedTable.length === 0) html += `<p class="empty-hint">No tiers defined for this check.</p>`;
+    else {
+      html += sortedTable.map((row) => {
+        const hit = resolvedIds.has(row.id);
+        return dcPlayFoldHTML('t' + row.id, `DC ${row.dc}`, row.text, hit, hit);
+      }).join('');
+      if (hasRoll && resolvedRows.length === 0) html += `<p class="empty-hint">Rolled ${esc(String(numericDraft))} doesn't reach the lowest DC (${sortedTable[0].dc}).</p>`;
+    }
+  }
+
+  if (md.showPassFail) {
+    // Which outcome(s) the typed roll would trigger (before it is logged).
+    const hitIds = new Set();
+    if (hasRoll) {
+      const prior = (t) => check.rollLog.filter((r) => {
+        const v = r.value;
+        if (t === 'nat1') return v === 1;
+        if (t === 'nat20') return v === 20;
+        return t === 'success' ? v >= link.settings.dc : v < link.settings.dc;
+      }).length;
+      const triggers = [numericDraft >= link.settings.dc ? 'success' : 'failure'];
+      if (numericDraft === 1) triggers.push('nat1');
+      if (numericDraft === 20) triggers.push('nat20');
+      triggers.forEach((t) => {
+        const n = prior(t) + 1;
+        const cands = check.conditions.filter((c) => c.trigger === t && c.occurrence <= n);
+        if (!cands.length) return;
+        const top = Math.max(...cands.map((c) => c.occurrence));
+        cands.filter((c) => c.occurrence === top).forEach((c) => hitIds.add(c.id));
+      });
+    }
+    html += `<div class="section-label">Pass / fail — DC ${esc(String(link.settings.dc))}</div>`;
+    if (check.conditions.length === 0) html += `<p class="empty-hint">No outcomes defined for this check.</p>`;
+    else html += check.conditions.map((c) => dcPlayFoldHTML('c' + c.id, describeDCConditionTrigger(c), c.text, hitIds.has(c.id), hitIds.has(c.id))).join('');
   }
   tableEl.innerHTML = html;
 }
 
 // Shows the concise "current applicable state" per independent trigger
 // group (see currentDCCheckConditionOutcomes in query.js) — the most
-// escalated reached outcome per group, not a growing stack of every
-// threshold ever crossed. Rebuilt whenever the roll log changes.
+// escalated reached outcome per group. Rebuilt whenever the roll log changes.
 function renderDCCheckPlayConditions() {
   const state = ui.dcCheckPlay;
   const el = document.getElementById('dc-play-conditions');
@@ -3763,7 +3912,7 @@ function renderDCCheckPlayConditions() {
   if (!check || check.conditions.length === 0) { el.innerHTML = ''; return; }
 
   const current = window.Query.currentDCCheckConditionOutcomes(check);
-  let html = `<div class="section-label">Conditions</div>`;
+  let html = `<div class="section-label">Triggered so far</div>`;
   html += current.length === 0
     ? `<p class="empty-hint">None triggered yet.</p>`
     : current.map((o) => `
@@ -4094,7 +4243,7 @@ function renderNotionImportModal() {
   bodyEl.innerHTML = html;
   footerEl.innerHTML = `
     <button class="icon-btn" onclick="window.app.commitNotionImportUI()">${icon('check')} Import</button>
-    <button class="mini-btn" onclick="window.app.backToNotionImportPaste()">Back</button>
+    <button class="mini-btn txt" onclick="window.app.backToNotionImportPaste()">Back</button>
   `;
 }
 
@@ -4354,6 +4503,64 @@ function wrapSelectionWithMarker(ta, delimiter) {
   ta.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+// The things the shortcuts (and the right-click menu) do, as plain functions.
+function startJumpLink(ta) {
+  const items = gatherJumpLinkItems();
+  if (items.length === 0) { closeMentionSuggest(); window.Health.notice('Nothing to link to yet — create a section, topic, scene or description first.'); return; }
+  mentionState = { active: true, mode: 'jump', textareaId: ta.id, textareaEl: ta, atIndex: ta.selectionStart, query: '', items: [], allItems: items, highlighted: 0 };
+  renderMentionSuggest(ta);
+}
+
+// Alt+D: edit the DC check the cursor is in, otherwise create one and drop its token here.
+function startDCCheck(ta) {
+  const existing = findDCCheckTokenAtCursor(ta.value, ta.selectionStart);
+  if (existing) {
+    window.app.openDCCheckEditor({ checkId: existing.id });
+    return;
+  }
+  const insertStart = ta.selectionStart;
+  const insertEnd = ta.selectionEnd;
+  window.app.openDCCheckEditor({
+    checkId: null,
+    onInsert: (checkId) => {
+      const token = `[[DCCHECK:${checkId}]]`;
+      const value = ta.value;
+      ta.value = value.slice(0, insertStart) + token + value.slice(insertEnd);
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = insertStart + token.length;
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+}
+
+// Types a trigger (@ or "") at the cursor, exactly as if it had been typed, so the
+// normal search popup opens.
+function typeTrigger(ta, text) {
+  ta.focus();
+  const a = ta.selectionStart, b = ta.selectionEnd;
+  ta.value = ta.value.slice(0, a) + text + ta.value.slice(b);
+  ta.selectionStart = ta.selectionEnd = a + text.length;
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// Bulleted list: puts "- " in front of every line the selection touches, or takes
+// them off again when every one of those lines already has it.
+function toggleBulletLines(ta) {
+  const v = ta.value;
+  const a = ta.selectionStart, b = ta.selectionEnd;
+  const from = v.lastIndexOf('\n', a - 1) + 1;
+  let to = v.indexOf('\n', b);
+  if (to === -1) to = v.length;
+  const lines = v.slice(from, to).split('\n');
+  const allBullets = lines.every((l) => /^\t*- /.test(l));
+  const out = lines.map((l) => (allBullets ? l.replace(/^(\t*)- /, '$1') : (/^\t*- /.test(l) ? l : '- ' + l))).join('\n');
+  ta.focus();
+  ta.value = v.slice(0, from) + out + v.slice(to);
+  ta.selectionStart = from;
+  ta.selectionEnd = from + out.length;
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 function handleMentionKeydown(e, ta) {
   if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b') {
     e.preventDefault();
@@ -4371,12 +4578,15 @@ function handleMentionKeydown(e, ta) {
     return;
   }
 
+  if (e.ctrlKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    wrapSelectionWithMarker(ta, '~~');
+    return;
+  }
+
   if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'l') {
     e.preventDefault();
-    const items = gatherJumpLinkItems();
-    if (items.length === 0) { closeMentionSuggest(); return; }
-    mentionState = { active: true, mode: 'jump', textareaId: ta.id, textareaEl: ta, atIndex: ta.selectionStart, query: '', items: [], allItems: items, highlighted: 0 };
-    renderMentionSuggest(ta);
+    startJumpLink(ta);
     return;
   }
 
@@ -4394,15 +4604,6 @@ function handleMentionKeydown(e, ta) {
     return;
   }
 
-  // Alt+M / Alt+Q: insert a Director-tool music button / quickfire button. Same picker
-  // as Alt+S; "Current scene" leaves session and scene empty, so the button acts on
-  // whatever scene is active in the Director tool when it is pressed.
-  if (e.altKey && !e.ctrlKey && !e.shiftKey && (e.key.toLowerCase() === 'm' || e.key.toLowerCase() === 'q')) {
-    e.preventDefault();
-    insertDirectorButton(ta, e.key.toLowerCase() === 'm' ? 'music' : 'quickfire');
-    return;
-  }
-
   // Alt+D: insert (or edit) a DC Check. If the cursor is already inside
   // an existing [[DCCHECK:id]] token, opens that check's own editor
   // directly rather than starting a new one — the "easy way to edit
@@ -4414,24 +4615,7 @@ function handleMentionKeydown(e, ta) {
   // finishing leaves the field untouched.
   if (e.altKey && !e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
     e.preventDefault();
-    const existing = findDCCheckTokenAtCursor(ta.value, ta.selectionStart);
-    if (existing) {
-      window.app.openDCCheckEditor({ checkId: existing.id });
-      return;
-    }
-    const insertStart = ta.selectionStart;
-    const insertEnd = ta.selectionEnd;
-    window.app.openDCCheckEditor({
-      checkId: null,
-      onInsert: (checkId) => {
-        const token = `[[DCCHECK:${checkId}]]`;
-        const value = ta.value;
-        ta.value = value.slice(0, insertStart) + token + value.slice(insertEnd);
-        ta.focus();
-        ta.selectionStart = ta.selectionEnd = insertStart + token.length;
-        ta.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    });
+    startDCCheck(ta);
     return;
   }
 
@@ -5490,7 +5674,7 @@ window.app = {
     } else {
       ui.dcCheckEditor = {
         step: 'setup', checkId: null, isNew: true,
-        setupName: '', setupType: window.Constants.CHECK_TYPES[0].key,
+        setupName: '', setupType: window.Constants.CHECK_TYPES[0].key, setupMode: window.Conditions.defaultDCCheckMode(window.Constants.CHECK_TYPES[0].key), setupModeTouched: false,
         onInsert: opts.onInsert || null, confirming: null
       };
     }
@@ -5512,10 +5696,10 @@ window.app = {
   },
   createDCCheckFromSetup() {
     const nameInput = document.getElementById('dcc-setup-name');
-    const typeSelect = document.getElementById('dcc-setup-type');
     const name = nameInput ? nameInput.value.trim() : '';
-    const type = typeSelect ? typeSelect.value : window.Constants.CHECK_TYPES[0].key;
-    const check = window.DataModel.createDCCheck(campaign, { name, checkType: type });
+    const type = (ui.dcCheckEditor && ui.dcCheckEditor.setupType) || window.Constants.CHECK_TYPES[0].key;
+    const radio = document.querySelector('input[name="dcc-setup-mode"]:checked');
+    const check = window.DataModel.createDCCheck(campaign, { name, checkType: type, mode: radio ? radio.value : window.Conditions.defaultDCCheckMode(type) });
     window.Conditions.syncDCChecks(campaign);
     ui.dcCheckEditor.step = 'edit';
     ui.dcCheckEditor.checkId = check.id;
@@ -5573,10 +5757,42 @@ window.app = {
     if (field === 'checkType') { persistSafely(); return; } // a <select> onchange, not continuous typing -- safe and unnecessary to re-render, the select already shows its own new value natively
     scheduleFieldSave(`dcc-${checkId}-${field}`);
   },
+  dcSetupTypeChanged(type) {
+    const st = ui.dcCheckEditor;
+    if (!st) return;
+    st.setupType = type;
+    if (!st.setupModeTouched) { st.setupMode = window.Conditions.defaultDCCheckMode(type); const nm = document.getElementById('dcc-setup-name'); const keep = nm ? nm.value : ''; renderDCCheckEditorModal(); const nm2 = document.getElementById('dcc-setup-name'); if (nm2) nm2.value = keep; }
+  },
+  dcEditTypeChanged(type) { const ck = ui.dcCheckEditor && campaign.dcChecks.find((c) => c.id === ui.dcCheckEditor.checkId); if (ck) window.app.onDCCheckFieldInput(ck.id, 'checkType', type); },
+  dcSetStack(checkId, on) { const ck = campaign.dcChecks.find((c) => c.id === checkId); if (!ck) return; ck.stackTiers = !!on; persistSafely(); renderDCCheckEditorModal(); },
+  dcSetupModeChanged(mode) { const st = ui.dcCheckEditor; if (st) { st.setupMode = mode; st.setupModeTouched = true; } },
+  dcSetMode(checkId, mode) {
+    const ck = campaign.dcChecks.find((c) => c.id === checkId); if (!ck) return;
+    ck.mode = mode;
+    window.Conditions.refreshLinkDC(campaign, ck);
+    persistSafely();
+    renderDCCheckEditorModal();
+  },
+  dcSetAllowBoth(checkId, on) {
+    const ck = campaign.dcChecks.find((c) => c.id === checkId); if (!ck) return;
+    ck.allowBoth = !!on;
+    persistSafely();
+    renderDCCheckEditorModal();
+  },
+  dcPassDCInput(checkId, value) {
+    const ck = campaign.dcChecks.find((c) => c.id === checkId); if (!ck) return;
+    window.Conditions.setPassDC(campaign, ck, parseInt(value, 10));
+    scheduleFieldSave(`dcc-passdc-${checkId}`);
+  },
   onDCTableRowDCInput(checkId, rowId, value) {
     const num = parseInt(value, 10);
     window.DataModel.updateDCTableRow(campaign, checkId, rowId, 'dc', Number.isNaN(num) ? 0 : num);
+    { const ck = campaign.dcChecks.find((c) => c.id === checkId); if (ck) window.Conditions.refreshLinkDC(campaign, ck); }
     scheduleFieldSave(`dcc-row-dc-${rowId}`);
+    // Re-sort once typing pauses: the rows are moved in place (not redrawn), so the
+    // field being typed in keeps its focus and every other field keeps its text.
+    clearTimeout(window.__dccResortTimer);
+    window.__dccResortTimer = setTimeout(() => resortDCRows(checkId), 450);
     // Deliberately no re-render here even though rows sort by DC for
     // display -- re-sorting mid-keystroke would yank the row out from
     // under the input being typed into, the same focus-loss failure
@@ -5588,12 +5804,13 @@ window.app = {
     scheduleFieldSave(`dcc-row-text-${rowId}`);
   },
   addDCTableRowUI(checkId) {
-    window.DataModel.addDCTableRow(campaign, checkId, { dc: 10, text: '' });
+    { const ck = campaign.dcChecks.find((c) => c.id === checkId); const last = ck && ck.table.length ? Math.max(...ck.table.map((r) => r.dc)) : 5; window.DataModel.addDCTableRow(campaign, checkId, { dc: last + 5, text: '' }); }
     renderDCCheckEditorModal();
     persistSafely();
   },
   deleteDCTableRowUI(checkId, rowId) {
     window.DataModel.deleteDCTableRow(campaign, checkId, rowId);
+    { const ck = campaign.dcChecks.find((c) => c.id === checkId); if (ck) window.Conditions.refreshLinkDC(campaign, ck); }
     renderDCCheckEditorModal();
     persistSafely();
   },
@@ -5619,7 +5836,11 @@ window.app = {
     scheduleFieldSave(`dcc-cond-text-${condId}`);
   },
   addDCConditionUI(checkId, trigger) {
-    window.DataModel.addDCCondition(campaign, checkId, { trigger, dc: 10, occurrence: 1, text: '' });
+    const ck = campaign.dcChecks.find((c) => c.id === checkId);
+    const passDC = ck ? window.Conditions.ensureDCLink(campaign, ck).settings.dc : 10;
+    const same = ck ? ck.conditions.filter((c) => c.trigger === trigger).length : 0;
+    window.DataModel.addDCCondition(campaign, checkId, { trigger, dc: passDC, occurrence: (trigger === 'nat1' || trigger === 'nat20') ? 1 : same + 1, text: '' });
+    if (ck) window.Conditions.refreshLinkDC(campaign, ck);
     renderDCCheckEditorModal();
     persistSafely();
   },
@@ -5656,6 +5877,12 @@ window.app = {
   },
   // Live-filters the table only -- never touches the roll log, and never
   // rebuilds the input itself, so nothing here can steal focus mid-type.
+  toggleDCPlayPeek(key) {
+    const st = ui.dcCheckPlay; if (!st) return;
+    st.peek = st.peek || {};
+    st.peek[key] = !st.peek[key];
+    renderDCCheckPlayTable();
+  },
   onDCPlayRolledInput(value) {
     if (!ui.dcCheckPlay) return;
     ui.dcCheckPlay.rolledDraft = value;
@@ -7496,7 +7723,7 @@ function showHoverCard(target) {
   const general = card ? card.general : [];
   const url = entityImageUrl(entity);
   const body = general.length
-    ? general.map((n) => `<p class="field-text">${rich(n.text)}</p>`).join('')
+    ? general.map((n) => `${questTagLine(n.moduleId)}<p class="field-text">${rich(n.text)}</p>`).join('')
     : (entity.summary ? `<p class="field-text">${esc(entity.summary)}</p>` : '<p class="empty-hint">No notes yet.</p>');
   const el = document.createElement('div');
   el.id = 'hover-card'; el.className = 'hover-card';

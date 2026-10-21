@@ -1171,3 +1171,27 @@ A location opened as a card or full page (from a mention, a "present here" chip)
 
 ### v103
 - The exe build needs an icon of at least 256×256 px; the old `renderer/icon.ico` only held 16 and 32 px. It now holds 16–256 px (the 256 px size is upscaled from the original, so it is a little soft — replace `renderer/icon.ico` with a real high-resolution multi-size icon whenever you have one).
+
+### v104: clarity sweep
+- The ? help now lists every shortcut (added: Alt+D DC checks, strikethrough, bullet keys, Tab indent, dialogue Enter/Shift+Enter, content search on a second Ctrl+K, Esc, hover cards, graph keys, full-screen button) and no longer claims Ctrl+L/Alt+S only work in the Content tab.
+- Right-click in any text field opens one menu: Insert (mention, dialogue, link, DC check, Director button), Format (bold, italic, strikethrough, DM comment, bullets), Logic (make conditional / edit the conditions around the cursor), Cut/Copy/Paste/Select all. Shift+right-click still gives the system menu. The shortcut code paths were turned into functions (`startJumpLink`, `startDCCheck`, `typeTrigger`, `toggleBulletLines`) shared by keys and menu.
+- The Content tab has a one-line explanation of what it is for.
+
+### v105: shortcuts, conditions dialog, DC checks
+- Strikethrough is now **Ctrl+Shift+S**; Alt+M / Alt+Q are gone. Help text for Alt+S rewritten (Director tool vs. Notion link). The Content create tab is called **Scenes & places**.
+- Conditions: every block editor has a "Show only when…" row (whole section / topic conditional without the graph; `module.showIf`). The right-click "Make conditional" dialog can now set up every kind itself: switch, milestone, content marked completed, result of any DC check, dice roll (check type, DC, critical margin), presence, item.
+- DC checks are either/or by default (`check.mode` = `scale` | `passfail`, `check.allowBoth`; helpers `dcCheckMode`, `defaultDCCheckMode`, `setPassDC`, `refreshLinkDC` in `src/conditions.js`). Scale = tiers with a DC each (labelled "Add tier"); pass/fail = ONE DC (with folded critical margin / natural 20-1) shared by all success/failure outcomes, no per-outcome DC. "Advanced: use both" shows both. A scale check counts as a success from its lowest tier.
+- Tier rows re-sort in place ~0.5 s after the DC stops changing (`resortDCRows`, no redraw, focus kept).
+- Play dialog: every tier / outcome is a collapsed line; typing a roll opens the one(s) it selects; clicking any line peeks at it (`toggleDCPlayPeek`).
+
+### v106
+- Text buttons (`mini-btn txt`) no longer use the 24 px icon-button size: "Show only when…", "Change…", "Always show", "Any success/failure", "Clear log" etc. are no longer cramped or overlapping.
+- DC check tiers stack: a roll shows its own tier and every lower one (`Query.resolveDCCheckTableRows`, per-check `stackTiers`, checkbox in the editor; the inline result in text and the Play dialog follow it).
+- Conditions on dice / DC checks can test specific roll values as well as results: at least / at most / exactly / between. Stored as keys `ge15`, `le9`, `eq15`, `r10x14` inside the normal `[[IF:id:keys]]` token (`isRollKey`, `makeRollKey`, `keysMatch` in `src/conditions.js`; needs the last rolled total, so it only matches after a roll).
+- Searchable pickers (`searchPickHTML`, `spOpen/spFilter/spKey` in app.js): DC check type (setup and editor), and in the conditional dialog the condition list, milestone, content, check type, people, locations, DC check.
+- The dialog edits the chosen condition itself (milestone, content, dice, presence, item settings, name); for a DC check result it offers "Edit the DC check…". The small edit button under a text field with conditional sections now reopens this dialog instead of jumping to the Conditions tab.
+
+### v107
+- Play: a conditional section that is met no longer puts its "If: …" badge (and switch/roll button) in front of the text; the badge floats to the right (`.cond-badge.met`). Unmet sections still collapse to one line.
+- Quests are yellow-ish by default (yellow, gold, amber, honey, orange, picked from the quest id; `Quests.questColorKey`). They do not use up the entity palette cycle. Quests made earlier are re-coloured once (`questColorSet` flag); a colour chosen afterwards is kept.
+- A block that belongs to a quest shows a yellow "Quest: Name (n)" label next to its title in Play (beats, topics, scenes, resolved rows; on its own line for descriptions and notes) and in Create (beats, topics, scenes, library name). Clicking it opens the quest flow (`questFlowOpen` in questsView.js): every step in a row with arrows, the current one highlighted; clicking a step goes there (`jumpToContent`).

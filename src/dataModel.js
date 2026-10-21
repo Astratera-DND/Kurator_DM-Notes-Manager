@@ -25,16 +25,20 @@ function giveDefaultNpcCard(entity) {
   if (CC) CC.ensureStatblock(entity);
 }
 
+function questsModule() { return (typeof module !== 'undefined' && module.exports) ? require('./quests') : window.Quests; }
+
 function createEntity(campaign, { type, name, summary = '', notionUrl = '' }) {
   const id = makeId(type === 'location' ? 'loc' : type === 'quest' ? 'quest' : 'npc');
-  const color = colorForIndex(campaign.meta.nextColorIndex || 0);
-  campaign.meta.nextColorIndex = (campaign.meta.nextColorIndex || 0) + 1;
+  let color;
+  if (type === 'quest') color = { key: questsModule().questColorKey(id) };   // quests are yellow-ish and do not use up the palette
+  else { color = colorForIndex(campaign.meta.nextColorIndex || 0); campaign.meta.nextColorIndex = (campaign.meta.nextColorIndex || 0) + 1; }
   const entity = {
     id,
     type, // 'npc' | 'location' | 'quest'
     name,
     icon: DEFAULT_ICON[type] || 'user',
     color: color.key,
+    ...(type === 'quest' ? { questColorSet: true } : {}),
     summary,
     notionUrl,
     lootTable: [], // {dc, result} rows — location-only in the UI, harmless if unused elsewhere
@@ -452,9 +456,9 @@ function createDraftEntity(campaign, { type, groupId = null }) {
   const id = makeId(type === 'location' ? 'loc' : type === 'quest' ? 'quest' : 'npc');
   // Peeks at the next palette color without using it up — the index only
   // advances if the draft is actually created.
-  const color = colorForIndex(campaign.meta.nextColorIndex || 0);
+  const color = type === 'quest' ? { key: questsModule().questColorKey(id) } : colorForIndex(campaign.meta.nextColorIndex || 0);
   const entity = {
-    id, type, name: '', icon: DEFAULT_ICON[type] || 'user', color: color.key,
+    id, type, ...(type === 'quest' ? { questColorSet: true } : {}), name: '', icon: DEFAULT_ICON[type] || 'user', color: color.key,
     summary: '', notionUrl: '', groupId: groupId || null,
     lootTable: [], image: null, createdAt: new Date().toISOString()
   };
@@ -472,7 +476,7 @@ function commitDraftEntity(campaign, id) {
   delete campaign.entities[id];
   entity.createdAt = new Date().toISOString();
   campaign.entities[id] = entity;
-  campaign.meta.nextColorIndex = (campaign.meta.nextColorIndex || 0) + 1;
+  if (entity.type !== 'quest') campaign.meta.nextColorIndex = (campaign.meta.nextColorIndex || 0) + 1;
   return entity;
 }
 
@@ -664,11 +668,14 @@ function addSceneLine(sceneBlock, { speakerId = null, text = '' }) {
 // occurrence counts and history survive between sessions until
 // explicitly cleared).
 
-function createDCCheck(campaign, { name = '', checkType }) {
+function createDCCheck(campaign, { name = '', checkType, mode = null }) {
   const check = {
     id: makeId('dcc'),
     name,
     checkType,
+    mode,          // 'scale' | 'passfail' (null = worked out from the content, see Conditions.dcCheckMode)
+    stackTiers: true,
+    allowBoth: false,
     table: [],
     conditions: [],
     rollLog: [],

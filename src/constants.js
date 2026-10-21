@@ -28,6 +28,8 @@
     { key: 'cyan',    bg: '#183439', fg: '#77daee' },
     { key: 'indigo',  bg: '#181b39', fg: '#7781ee' },
     { key: 'violet',  bg: '#2c1839', fg: '#bc77ee' },
+    { key: 'gold',    bg: '#3a3214', fg: '#f2d060' },
+    { key: 'honey',   bg: '#3a2c12', fg: '#f0b84f' },
     { key: 'fuchsia', bg: '#391839', fg: '#ee77ee' },
     { key: 'rose',    bg: '#391821', fg: '#ee7795' },
     { key: 'slate',   bg: '#252932', fg: '#a9b3c6' }

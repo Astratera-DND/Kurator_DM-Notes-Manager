@@ -187,6 +187,45 @@ function applyDCRoll(campaign, check, value) {
   return cond;
 }
 
+// --- How a DC check works: scaling or pass/fail ------------------------------------------
+// "scale"    : a table of tiers; the highest DC the roll reaches decides what is revealed
+//              (Investigation, Perception, Insight...). No clear success.
+// "passfail" : one DC; the check succeeds or fails, with outcomes for repeats
+//              ("2nd failure"), natural 1 / natural 20 (Dexterity save, forcing a door...).
+// A check normally uses one of the two. "allowBoth" (or a check that already holds both
+// kinds of content) shows both, for the rare check that needs it.
+const SAVE_LIKE_TYPES = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+
+function defaultDCCheckMode(checkType) { return SAVE_LIKE_TYPES.includes(checkType) ? 'passfail' : 'scale'; }
+
+function dcCheckMode(check) {
+  const rows = (check.table || []).length > 0, outs = (check.conditions || []).length > 0;
+  if (check.mode !== 'scale' && check.mode !== 'passfail') {
+    check.mode = outs && !rows ? 'passfail' : 'scale';
+    if (rows && outs) check.allowBoth = true;
+  }
+  const both = !!check.allowBoth || (rows && outs);
+  return { mode: check.mode, both, showScale: both || check.mode === 'scale', showPassFail: both || check.mode === 'passfail' };
+}
+
+// The one DC of a pass/fail check: the campaign-wide result and every success/failure
+// outcome use the same number, so they can never contradict each other.
+function setPassDC(campaign, check, dc) {
+  const n = Number(dc);
+  const link = ensureDCLink(campaign, check);
+  link.settings.dc = Number.isFinite(n) ? n : 0;
+  (check.conditions || []).forEach((c) => { if (c.trigger === 'success' || c.trigger === 'failure') c.dc = link.settings.dc; });
+}
+
+// A scaling check has no DC of its own: it counts as a success from its lowest tier.
+function refreshLinkDC(campaign, check) {
+  const hasPass = (check.conditions || []).some((c) => c.trigger === 'success' || c.trigger === 'failure');
+  if (dcCheckMode(check).mode === 'scale' && !hasPass) {
+    const dcs = (check.table || []).map((r) => Number(r.dc)).filter(Number.isFinite);
+    if (dcs.length) ensureDCLink(campaign, check).settings.dc = Math.min(...dcs);
+  }
+}
+
 function clearDCResult(campaign, check) {
   const cond = check.conditionId ? byId(campaign, check.conditionId) : null;
   if (cond) cond.current = null;
@@ -255,7 +294,7 @@ function stateOf(campaign, cond, ctx, depth = 0) {
       const target = byId(campaign, r.conditionId);
       if (!target) return false;
       const s = stateOf(campaign, target, ctx, depth + 1);
-      const hit = s != null && (r.states || []).includes(s);
+      const hit = keysMatch(target, r.states || [], s);
       return r.negate ? !hit : hit;
     });
     return ((cond.settings.mode === 'any') ? ok.some(Boolean) : ok.every(Boolean)) ? 'met' : 'unmet';
@@ -276,6 +315,41 @@ function dependsOn(campaign, comboId, targetId, seen = new Set()) {
 // A rule "combo uses target" is allowed only when it would not create a loop.
 function canUse(campaign, comboId, targetId) { return !dependsOn(campaign, targetId, comboId); }
 
+// Specific roll values for dice conditions, stored as keys that fit the [[IF:…]] token:
+//   ge15 = a total of 15 or more, le9 = 9 or less, eq15 = exactly 15, r10x14 = 10 to 14.
+function rollKeyTest(key) {
+  let m = /^(ge|le|eq)(\d+)$/.exec(key || '');
+  if (m) { const n = Number(m[2]); return m[1] === 'ge' ? (v) => v >= n : m[1] === 'le' ? (v) => v <= n : (v) => v === n; }
+  m = /^r(\d+)x(\d+)$/.exec(key || '');
+  if (m) { const a = Number(m[1]), b = Number(m[2]); return (v) => v >= Math.min(a, b) && v <= Math.max(a, b); }
+  return null;
+}
+function isRollKey(key) { return !!rollKeyTest(key); }
+function makeRollKey(kind, a, b) {
+  const n = (x) => Math.max(0, Math.floor(Number(x)));
+  if (!Number.isFinite(Number(a))) return null;
+  if (kind === 'range') return Number.isFinite(Number(b)) ? `r${n(a)}x${n(b)}` : null;
+  return `${kind === 'atleast' ? 'ge' : kind === 'atmost' ? 'le' : 'eq'}${n(a)}`;
+}
+function rollKeyLabel(key) {
+  let m = /^(ge|le|eq)(\d+)$/.exec(key || '');
+  if (m) return m[1] === 'ge' ? `Roll ${m[2]} or more` : m[1] === 'le' ? `Roll ${m[2]} or less` : `Roll exactly ${m[2]}`;
+  m = /^r(\d+)x(\d+)$/.exec(key || '');
+  return m ? `Roll ${Math.min(+m[1], +m[2])} to ${Math.max(+m[1], +m[2])}` : null;
+}
+function lastRollValue(cond) {
+  if (!cond || cond.kind !== 'dice' || !cond.current) return null;
+  const log = cond.rollLog || [];
+  const v = log.length ? Number(log[log.length - 1].value) : NaN;
+  return Number.isFinite(v) ? v : null;
+}
+// Does the current state (and, for dice, the last rolled total) match one of the keys?
+function keysMatch(cond, keys, state) {
+  if (state != null && keys.includes(state)) return true;
+  const v = lastRollValue(cond);
+  return v != null && keys.some((k) => { const t = rollKeyTest(k); return t ? t(v) : false; });
+}
+
 function parseKeys(raw) {
   const negate = !!raw && raw.startsWith('!');
   const keys = (raw || '').replace(/^!/, '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -286,14 +360,14 @@ function sectionShows(campaign, cond, raw, ctx) {
   if (!cond) return true; // a deleted condition never hides text
   const { negate, keys } = parseKeys(raw);
   const s = stateOf(campaign, cond, ctx);
-  const hit = s != null && keys.includes(s);
+  const hit = keysMatch(cond, keys, s);
   return negate ? !hit : hit;
 }
 
 function describeSection(campaign, cond, raw) {
   if (!cond) return 'Deleted condition';
   const { negate, keys } = parseKeys(raw);
-  const labels = keys.map((k) => { const s = statesOf(cond).find((x) => x.key === k); return s ? s.label : k; });
+  const labels = keys.map((k) => { const s = statesOf(cond).find((x) => x.key === k); return s ? s.label : (rollKeyLabel(k) || k); });
   return `${cond.name} ${negate ? 'is not' : 'is'} ${labels.join(' or ') || '…'}`;
 }
 
@@ -420,9 +494,9 @@ function resetAll(campaign) {
 const api = {
   DICE_STATES, MILESTONE_STATES, COMBO_STATES, PRESENCE_STATES, ITEM_STATES, RESOLVED_STATES, presentIdsAt, holdsItem, KIND_LABELS, TOKEN_RE,
   setContext, getContext, list, byId, statesOf, createCondition, deleteCondition, addSwitchState, removeSwitchState, setState,
-  diceOutcome, rollDice, clearResult, stateOf, dependsOn, canUse, parseKeys, sectionShows, describeSection,
+  diceOutcome, rollDice, clearResult, stateOf, dependsOn, canUse, parseKeys, isRollKey, makeRollKey, rollKeyLabel, keysMatch, sectionShows, describeSection,
   parseSections, resolveText, stripTokens, sectionsAt, wrapSelection, unwrapSection, retargetSection,
-  ensureDCLink, syncDCChecks, applyDCRoll, clearDCResult, dcCheckLabel, referencesIn, conditionIdsOfModule, dcConditionIdsOfModule, usages, cardShows, resetAll
+  dcCheckMode, defaultDCCheckMode, setPassDC, refreshLinkDC, ensureDCLink, syncDCChecks, applyDCRoll, clearDCResult, dcCheckLabel, referencesIn, conditionIdsOfModule, dcConditionIdsOfModule, usages, cardShows, resetAll
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else window.Conditions = api;

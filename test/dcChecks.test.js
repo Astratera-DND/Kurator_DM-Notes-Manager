@@ -286,4 +286,33 @@ function ok(msg) { console.log('ok  -', msg); }
   ok('multiple independent DC Check tokens in the same text field each resolve correctly');
 }
 
+// --- Test 16: either/or modes, single pass DC, scale link DC ----------------
+{
+  const Conditions = require('../src/conditions');
+  assert.strictEqual(Conditions.defaultDCCheckMode('dexterity'), 'passfail');
+  assert.strictEqual(Conditions.defaultDCCheckMode('investigation'), 'scale');
+
+  const c = dataModel.emptyCampaign();
+  const inv = dataModel.createDCCheck(c, { name: 'Inv', checkType: 'investigation', mode: 'scale' });
+  let m = Conditions.dcCheckMode(inv);
+  assert.ok(m.showScale && !m.showPassFail && !m.both, 'scale mode shows only tiers');
+  dataModel.addDCTableRow(c, inv.id, { dc: 15, text: 'a' });
+  dataModel.addDCTableRow(c, inv.id, { dc: 10, text: 'b' });
+  Conditions.refreshLinkDC(c, inv);
+  assert.strictEqual(Conditions.ensureDCLink(c, inv).settings.dc, 10, 'scale check succeeds from its lowest tier');
+
+  const dex = dataModel.createDCCheck(c, { name: 'Dex', checkType: 'dexterity', mode: 'passfail' });
+  dataModel.addDCCondition(c, dex.id, { trigger: 'failure', dc: 10, occurrence: 1, text: 'f' });
+  dataModel.addDCCondition(c, dex.id, { trigger: 'success', dc: 10, occurrence: 1, text: 's' });
+  Conditions.setPassDC(c, dex, 14);
+  assert.ok(dex.conditions.every((x) => x.dc === 14), 'all success/failure outcomes share the single DC');
+  assert.strictEqual(Conditions.ensureDCLink(c, dex).settings.dc, 14);
+  m = Conditions.dcCheckMode(dex);
+  assert.ok(!m.showScale && m.showPassFail);
+
+  dataModel.addDCTableRow(c, dex.id, { dc: 5, text: 'x' });
+  assert.ok(Conditions.dcCheckMode(dex).both, 'a check that holds both kinds shows both');
+  ok('DC check modes: either/or by default, one pass DC, scale link DC');
+}
+
 console.log('\nAll DC Check data-model and evaluation tests passed.');

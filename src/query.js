@@ -43,6 +43,15 @@ function resolveDCCheckTableRow(dcCheck, rolledValue) {
   return eligible.reduce((best, row) => (row.dc > best.dc ? row : best), eligible[0]);
 }
 
+// All tiers a roll reaches, lowest first. Tiers stack by default (a roll of 16 shows the
+// DC 10 AND the DC 15 text); a check with stackTiers === false shows only the highest.
+function resolveDCCheckTableRows(dcCheck, rolledValue) {
+  if (!dcCheck || !Array.isArray(dcCheck.table)) return [];
+  if (rolledValue === null || rolledValue === undefined || Number.isNaN(rolledValue)) return [];
+  if (dcCheck.stackTiers === false) { const top = resolveDCCheckTableRow(dcCheck, rolledValue); return top ? [top] : []; }
+  return dcCheck.table.filter((row) => rolledValue >= row.dc).sort((a, b) => a.dc - b.dc);
+}
+
 // Scans the full roll log in order, tallying how many times each
 // distinct (trigger, dc) combination that actually has a condition
 // defined for it has been satisfied so far — nat1/nat20 aren't stored
@@ -145,10 +154,10 @@ function renderDCCheckInlineHTML(dcCheck, campaign) {
   let html = `<button type="button" class="dc-check-btn" onclick="window.app.openDCCheckPlay('${dcCheck.id}')">${escapeHtml(buttonLabel)}</button>`;
 
   if (lastRoll) {
-    const row = resolveDCCheckTableRow(dcCheck, lastRoll.value);
+    const rows = resolveDCCheckTableRows(dcCheck, lastRoll.value);
     const currentOutcomes = currentDCCheckConditionOutcomes(dcCheck);
     const pieces = [];
-    if (row && row.text && row.text.trim()) pieces.push(renderMentions(row.text, campaign).html);
+    rows.forEach((row) => { if (row.text && row.text.trim()) pieces.push(renderMentions(row.text, campaign).html); });
     currentOutcomes.forEach((o) => {
       if (o.condition.text && o.condition.text.trim()) pieces.push(renderMentions(o.condition.text, campaign).html);
     });
@@ -1240,6 +1249,7 @@ const api = {
   getAssignedContent,
   getModuleAssignments,
   resolveDCCheckTableRow,
+  resolveDCCheckTableRows,
   evaluateDCCheckConditions,
   currentDCCheckConditionOutcomes,
   getDCCheckById,
