@@ -5,7 +5,7 @@ A passion project that I (with lots of help of AI) created for my own homebrew D
 You can create locations, NPCs, Dialog, Sections all based on "milestones" which you can use to track moments in time. For example "morning", "midday" etc. 
 It can do much much more Check out the features for more details. 
 
-You then have a deticated "play" screen in which you can jump through your entities to read off without having to go crazy keeping track. 
+You then have a dedicated "play" screen in which you can jump through your entities to read off without having to go crazy keeping track. 
 There is a "mark as complete" checkbox that allows you to hide the note once it was read. 
 If you didn't mark something it will come up on the next "milestone" in case you just missed it. 
 
