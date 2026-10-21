@@ -1168,3 +1168,6 @@ A location opened as a card or full page (from a mention, a "present here" chip)
 
 ### v101
 - Fix for the GitHub build: one Notion-import test read the author's private export from a fixed upload path and crashed on any other machine. It now skips when the file is absent (set `NOTION_EXAMPLE_TEXT` to run it). The workflow uses `actions/checkout@v5` and `actions/setup-node@v5` (Node 20 deprecation warning).
+
+### v103
+- The exe build needs an icon of at least 256×256 px; the old `renderer/icon.ico` only held 16 and 32 px. It now holds 16–256 px (the 256 px size is upscaled from the original, so it is a little soft — replace `renderer/icon.ico` with a real high-resolution multi-size icon whenever you have one).

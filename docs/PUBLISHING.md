@@ -7,7 +7,7 @@ This explains how to put the project on GitHub so that people can (a) read and d
 
 - Open `LICENSE` and replace `Kurator Session Manager contributors` with your name or handle if you want
   your name on it.
-- Check `package.json`: `"version"` is the version number people see in the exe's file name.
+- Check `package.json`: `"version"` is the version number people see in the exe's file name. It must have exactly **three** numbers (`1.0.0`, `1.1.0`, …) — a fourth number such as `0.1.0.0` makes the build fail.
 - Your **own campaigns are safe**: the file `.gitignore` tells GitHub Desktop to never upload
   `campaign-data/` (your real campaigns), `settings.json` (your paths) or `node_modules/`.
 
