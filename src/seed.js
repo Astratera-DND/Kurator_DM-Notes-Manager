@@ -5,8 +5,10 @@
 
 const {
   emptyCampaign, createEntity, createCheckpoint, createArrivalBlock,
-  createNoteBlock, createTopicBlock, createSceneBlock, addSceneLine, addBeat
+  createNoteBlock, createTopicBlock, createSceneBlock, addSceneLine, addBeat, createDCCheck, addDCCondition
 } = require('./dataModel');
+const Conditions = require('./conditions');
+const Quests = require('./quests');
 
 function buildSeedCampaign() {
   const c = emptyCampaign();
@@ -104,10 +106,18 @@ function buildSeedCampaign() {
     timeId: d2morning.id // only makes sense to ask about once the party has seen the Day 1 debt scene play out
   });
 
+  // Example: a DC check, and text that only appears once the check succeeds.
+  // (Select text in a field, right-click > Make conditional; Alt+D inserts a DC check.)
+  const humCheck = createDCCheck(c, { name: 'Notice the hum', checkType: 'perception', mode: 'passfail' });
+  addDCCondition(c, humCheck.id, { trigger: 'failure', dc: 14, occurrence: 1, text: 'Just the wind in the rusted frame.' });
+  addDCCondition(c, humCheck.id, { trigger: 'success', dc: 14, occurrence: 1, text: 'A faint, repeating pulse — somewhere behind the door.' });
+  Conditions.syncDCChecks(c);
+  Conditions.setPassDC(c, humCheck, 14);
+  const humCond = Conditions.ensureDCLink(c, humCheck);
   createNoteBlock(c, {
     entityId: scrapGate.id,
     timeId: null,
-    text: 'A faint hum is audible up close (perception dc 14).'
+    text: `A faint hum is audible up close. [[DCCHECK:${humCheck.id}]] [[IF:${humCond.id}:success,critSuccess]]It is the same repeating pattern the grey man talks about, coming from the relay outpost.[[/IF]]`
   });
   createNoteBlock(c, {
     entityId: scrapGate.id,
@@ -140,6 +150,19 @@ function buildSeedCampaign() {
   addSceneLine(debtScene, {
     speakerId: greyMan.id,
     text: 'Three more days. Then I stop asking politely.'
+  });
+
+  // Example: a quest. Any content can be marked as a step of it (right-click a block > Quest…).
+  const debtQuest = createEntity(c, { type: 'quest', name: "The grey man's debt", summary: 'Find out what the sailor owes, and whether it can be settled.' });
+  const settle = createSceneBlock(c, { locationId: market.id, timeId: d2morning.id, label: 'Settling the debt' });
+  addSceneLine(settle, { speakerId: sailor.id, text: 'The cargo is gone. All I can offer is a seat on the next barge out.' });
+  addSceneLine(settle, { speakerId: greyMan.id, text: 'Then we are square. For now.' });
+
+  // The content above is stored as the older block layout; convert it now so the quest can tag modules.
+  require('./storage').migrateToModularContent(c);
+  ['The grey man collects on an old debt', 'What happened with the sailor', 'Settling the debt'].forEach((name) => {
+    const m = c.contentModules.find((x) => x.name === name);
+    if (m) Quests.assign(c, m.id, debtQuest.id);
   });
 
   return c;

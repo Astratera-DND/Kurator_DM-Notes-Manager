@@ -1,0 +1,621 @@
+{
+  "entities": {
+    "loc_mvibzsc43x133u8": {
+      "id": "loc_mvibzsc43x133u8",
+      "type": "location",
+      "name": "Rusted spire market",
+      "icon": "mapPin",
+      "color": "coral",
+      "summary": "A market built into the ribs of a downed orbital tether.",
+      "notionUrl": "",
+      "lootTable": [],
+      "image": null,
+      "createdAt": "2026-10-21T16:33:19.156Z"
+    },
+    "loc_mvibzsc47cuczid": {
+      "id": "loc_mvibzsc47cuczid",
+      "type": "location",
+      "name": "Scrap gate",
+      "icon": "mapPin",
+      "color": "amber",
+      "summary": "A rusted blast door repurposed as the market's north entrance.",
+      "notionUrl": "",
+      "lootTable": [],
+      "image": null,
+      "createdAt": "2026-10-21T16:33:19.156Z"
+    },
+    "npc_mvibzsc458ipru4": {
+      "id": "npc_mvibzsc458ipru4",
+      "type": "npc",
+      "name": "Grey man",
+      "icon": "user",
+      "color": "teal",
+      "summary": "Former signal corps engineer. Left hand replaced with a salvaged manipulator arm. Deeply distrustful of Concord officials.",
+      "notionUrl": "",
+      "lootTable": [],
+      "image": null,
+      "createdAt": "2026-10-21T16:33:19.156Z",
+      "characterCard": {
+        "statblock": {
+          "size": "Medium",
+          "creatureType": "Humanoid",
+          "alignment": "Neutral",
+          "ac": 10,
+          "hp": 4,
+          "hpDice": "1d8",
+          "speed": "30 ft.",
+          "abilities": {
+            "str": 10,
+            "dex": 10,
+            "con": 10,
+            "int": 10,
+            "wis": 10,
+            "cha": 10
+          },
+          "saveProf": {
+            "str": false,
+            "dex": false,
+            "con": false,
+            "int": false,
+            "wis": false,
+            "cha": false
+          },
+          "skills": {},
+          "passivePerceptionOverride": null,
+          "passiveInsightOverride": null,
+          "senses": "",
+          "languages": "Common",
+          "cr": "0",
+          "gear": "Club",
+          "traits": "Training. The villager has proficiency in one skill of the DM's choice and has Advantage on checks using that skill.",
+          "actions": "Club. Melee Attack Roll: +2, reach 5 ft. Hit: 2 (1d4) Bludgeoning damage."
+        },
+        "voice": {
+          "pitch": "",
+          "accent": "",
+          "pace": "",
+          "catchphrase": "",
+          "example": ""
+        },
+        "persona": {
+          "role": "",
+          "appearance": "",
+          "demeanor": "",
+          "attitude": "",
+          "wants": "",
+          "fears": "",
+          "ideal": "",
+          "mannerism": "",
+          "secret": ""
+        }
+      }
+    },
+    "npc_mvibzsc5wkn6oh6": {
+      "id": "npc_mvibzsc5wkn6oh6",
+      "type": "npc",
+      "name": "Old sailor",
+      "icon": "user",
+      "color": "blue",
+      "summary": "Runs the fuel barge at the eastern dock. Owes the grey man a debt he refuses to discuss.",
+      "notionUrl": "",
+      "lootTable": [],
+      "image": null,
+      "createdAt": "2026-10-21T16:33:19.157Z",
+      "characterCard": {
+        "statblock": {
+          "size": "Medium",
+          "creatureType": "Humanoid",
+          "alignment": "Neutral",
+          "ac": 10,
+          "hp": 4,
+          "hpDice": "1d8",
+          "speed": "30 ft.",
+          "abilities": {
+            "str": 10,
+            "dex": 10,
+            "con": 10,
+            "int": 10,
+            "wis": 10,
+            "cha": 10
+          },
+          "saveProf": {
+            "str": false,
+            "dex": false,
+            "con": false,
+            "int": false,
+            "wis": false,
+            "cha": false
+          },
+          "skills": {},
+          "passivePerceptionOverride": null,
+          "passiveInsightOverride": null,
+          "senses": "",
+          "languages": "Common",
+          "cr": "0",
+          "gear": "Club",
+          "traits": "Training. The villager has proficiency in one skill of the DM's choice and has Advantage on checks using that skill.",
+          "actions": "Club. Melee Attack Roll: +2, reach 5 ft. Hit: 2 (1d4) Bludgeoning damage."
+        },
+        "voice": {
+          "pitch": "",
+          "accent": "",
+          "pace": "",
+          "catchphrase": "",
+          "example": ""
+        },
+        "persona": {
+          "role": "",
+          "appearance": "",
+          "demeanor": "",
+          "attitude": "",
+          "wants": "",
+          "fears": "",
+          "ideal": "",
+          "mannerism": "",
+          "secret": ""
+        }
+      }
+    },
+    "quest_mvibzsc6hzmn1f8": {
+      "id": "quest_mvibzsc6hzmn1f8",
+      "type": "quest",
+      "name": "The grey man's debt",
+      "icon": "flag",
+      "color": "gold",
+      "questColorSet": true,
+      "summary": "Find out what the sailor owes, and whether it can be settled.",
+      "notionUrl": "",
+      "lootTable": [],
+      "image": null,
+      "createdAt": "2026-10-21T16:33:19.158Z"
+    }
+  },
+  "checkpoints": [
+    {
+      "id": "cp_mvibzsc5jiz5tfg",
+      "label": "Day 1 · dawn",
+      "order": 0
+    },
+    {
+      "id": "cp_mvibzsc5itx6bh9",
+      "label": "Day 1 · midday",
+      "order": 1
+    },
+    {
+      "id": "cp_mvibzsc576beu3v",
+      "label": "Day 2 · morning",
+      "order": 2
+    },
+    {
+      "id": "cp_mvibzsc51to954p",
+      "label": "Day 3 · night",
+      "order": 3
+    }
+  ],
+  "blocks": [
+    {
+      "id": "blk_mvibzsc5f0gcnwd",
+      "kind": "arrival",
+      "locationId": "loc_mvibzsc43x133u8",
+      "timeId": "cp_mvibzsc5jiz5tfg",
+      "presence": [
+        "npc_mvibzsc458ipru4",
+        "loc_mvibzsc47cuczid"
+      ],
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5uk47jwt",
+      "kind": "arrival",
+      "locationId": "loc_mvibzsc43x133u8",
+      "timeId": "cp_mvibzsc576beu3v",
+      "presence": [
+        "loc_mvibzsc47cuczid"
+      ],
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    }
+  ],
+  "entityGroups": [],
+  "contentModules": [
+    {
+      "id": "beat_mvibzsc5tto1clb",
+      "type": "beat",
+      "name": "Robbery near the fountain",
+      "text": "A pickpocket strikes if the party lingers near the central fountain for more than a minute. [[SAY:npc_mvibzsc458ipru4]]Watch your pockets around here.[[/SAY]] the grey man mutters, if he's still nearby.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "mod_mvibzsc6kep9opi",
+      "type": "description",
+      "name": "You arrive at the Rusted spire market as…",
+      "html": "You arrive at the Rusted spire market as the twin suns crest the horizon. Stalls are still shuttered, but a [[npc_mvibzsc458ipru4]] leans against a support strut near the old [[loc_mvibzsc47cuczid]], watching the crowd trickle in. [[SAY:npc_mvibzsc458ipru4]]You are early.[[/SAY]] he mutters, not looking up.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "mod_mvibzsc6bm7hpne",
+      "type": "description",
+      "name": "Rain streaks down the market's plastic a…",
+      "html": "Rain streaks down the market's plastic awnings. The stalls near the [[loc_mvibzsc47cuczid]] are busier than usual — the [[npc_mvibzsc458ipru4]] is nowhere in sight.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5u977hhb",
+      "type": "note",
+      "name": "Built into the ribs of a downed orbital …",
+      "text": "Built into the ribs of a downed orbital tether. The structure groans audibly in high wind — a good excuse for a Perception check to notice anything else moving.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc50qke8pj",
+      "type": "topic",
+      "name": "If asked about the tether wreck",
+      "text": "Locals treat it as sacred ground. Climbing on the exposed rib sections is technically forbidden, though nobody enforces it seriously.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5nz7uonb",
+      "type": "note",
+      "name": "Former signal corps engineer. Left hand …",
+      "text": "Former signal corps engineer. Left hand replaced with a salvaged manipulator arm. Deeply distrustful of Concord officials.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5c6sllcd",
+      "type": "note",
+      "name": "Waiting for a courier who never shows. A…",
+      "text": "Waiting for a courier who never shows. Approaches the party if they linger near the scrap gate for more than a minute.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5kctcgmk",
+      "type": "note",
+      "name": "Keeps glancing toward the fuel barge — h…",
+      "text": "Keeps glancing toward the fuel barge — he already knows the sailor is avoiding him.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5pczjmmx",
+      "type": "note",
+      "name": "Not present today. Last seen heading tow…",
+      "text": "Not present today. Last seen heading toward the relay outpost before sunrise.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc590krx71",
+      "type": "topic",
+      "name": "Ask about the signal",
+      "text": "He goes quiet, then mutters about a repeating pattern coming from the outpost. Wants medical supplies in trade for the details.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc57sswer9",
+      "type": "topic",
+      "name": "Rumors in town",
+      "text": "A Concord patrol passed through three days ago, asking after outsiders. The stall keeper at the scrap gate is hiding something in the back room.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5sqdtj8t",
+      "type": "topic",
+      "name": "What happened with the sailor",
+      "text": "If pressed, he admits the debt was never really about money — the sailor lost cargo that belonged to someone the grey man still answers to.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z",
+      "questId": "quest_mvibzsc6hzmn1f8",
+      "questIndex": 2
+    },
+    {
+      "id": "blk_mvibzsc5gsl7ugf",
+      "type": "note",
+      "name": "A faint hum is audible up close. It is t…",
+      "text": "A faint hum is audible up close. [[DCCHECK:dcc_mvibzsc5me5inlb]] [[IF:cnd_mvibzsc56t6ayb:success,critSuccess]]It is the same repeating pattern the grey man talks about, coming from the relay outpost.[[/IF]]",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5a5g5ljw",
+      "type": "note",
+      "name": "Still chained shut. Opens automatically …",
+      "text": "Still chained shut. Opens automatically at midday.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc541ak7gy",
+      "type": "note",
+      "name": "Propped open with a supply crate; foot t…",
+      "text": "Propped open with a supply crate; foot traffic is heavier than usual.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5b8fhl6v",
+      "type": "note",
+      "name": "Runs the fuel barge at the eastern dock.…",
+      "text": "Runs the fuel barge at the eastern dock. Owes the grey man a debt he refuses to discuss.",
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "blk_mvibzsc5jr9e1lp",
+      "type": "scene",
+      "name": "The grey man collects on an old debt",
+      "lines": [
+        {
+          "id": "line_mvibzsc5208r5sa",
+          "speakerId": null,
+          "text": "The old sailor freezes mid-stride as the grey man steps out from behind a stall."
+        },
+        {
+          "id": "line_mvibzsc5bzw6vow",
+          "speakerId": "npc_mvibzsc458ipru4",
+          "text": "You have been avoiding the dock road for a week."
+        },
+        {
+          "id": "line_mvibzsc55ntw18s",
+          "speakerId": "npc_mvibzsc5wkn6oh6",
+          "text": "I do not have it yet. Another few days."
+        },
+        {
+          "id": "line_mvibzsc6qwtxpxo",
+          "speakerId": "npc_mvibzsc458ipru4",
+          "text": "Three more days. Then I stop asking politely."
+        }
+      ],
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.157Z",
+      "questId": "quest_mvibzsc6hzmn1f8",
+      "questIndex": 1
+    },
+    {
+      "id": "blk_mvibzsc6mxxar7h",
+      "type": "scene",
+      "name": "Settling the debt",
+      "lines": [
+        {
+          "id": "line_mvibzsc6hyhwqby",
+          "speakerId": "npc_mvibzsc5wkn6oh6",
+          "text": "The cargo is gone. All I can offer is a seat on the next barge out."
+        },
+        {
+          "id": "line_mvibzsc6tnxqn8g",
+          "speakerId": "npc_mvibzsc458ipru4",
+          "text": "Then we are square. For now."
+        }
+      ],
+      "complete": false,
+      "createdAt": "2026-10-21T16:33:19.158Z",
+      "questId": "quest_mvibzsc6hzmn1f8",
+      "questIndex": 3
+    }
+  ],
+  "assignments": [
+    {
+      "id": "asg_mvibzsc6i9ztufi",
+      "moduleId": "beat_mvibzsc5tto1clb",
+      "entityId": "loc_mvibzsc43x133u8",
+      "timeId": "cp_mvibzsc5jiz5tfg",
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6ro3le5h",
+      "moduleId": "mod_mvibzsc6kep9opi",
+      "entityId": "loc_mvibzsc43x133u8",
+      "timeId": "cp_mvibzsc5jiz5tfg",
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6x0wrczk",
+      "moduleId": "mod_mvibzsc6bm7hpne",
+      "entityId": "loc_mvibzsc43x133u8",
+      "timeId": "cp_mvibzsc576beu3v",
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6z7s1stg",
+      "moduleId": "blk_mvibzsc5u977hhb",
+      "entityId": "loc_mvibzsc43x133u8",
+      "timeId": null,
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6t7xxmn6",
+      "moduleId": "blk_mvibzsc50qke8pj",
+      "entityId": "loc_mvibzsc43x133u8",
+      "timeId": null,
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc61cpxgnu",
+      "moduleId": "blk_mvibzsc5nz7uonb",
+      "entityId": "npc_mvibzsc458ipru4",
+      "timeId": null,
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6m79o6o7",
+      "moduleId": "blk_mvibzsc5c6sllcd",
+      "entityId": "npc_mvibzsc458ipru4",
+      "timeId": "cp_mvibzsc5jiz5tfg",
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6k0qd4vf",
+      "moduleId": "blk_mvibzsc5kctcgmk",
+      "entityId": "npc_mvibzsc458ipru4",
+      "timeId": "cp_mvibzsc5jiz5tfg",
+      "order": 1,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6xkaczi8",
+      "moduleId": "blk_mvibzsc5pczjmmx",
+      "entityId": "npc_mvibzsc458ipru4",
+      "timeId": "cp_mvibzsc576beu3v",
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc611vo916",
+      "moduleId": "blk_mvibzsc590krx71",
+      "entityId": "npc_mvibzsc458ipru4",
+      "timeId": null,
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc60e89l08",
+      "moduleId": "blk_mvibzsc57sswer9",
+      "entityId": "npc_mvibzsc458ipru4",
+      "timeId": null,
+      "order": 1,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6t2mcmtq",
+      "moduleId": "blk_mvibzsc5sqdtj8t",
+      "entityId": "npc_mvibzsc458ipru4",
+      "timeId": "cp_mvibzsc576beu3v",
+      "order": 2,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc65kucd15",
+      "moduleId": "blk_mvibzsc5gsl7ugf",
+      "entityId": "loc_mvibzsc47cuczid",
+      "timeId": null,
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6afaqpmi",
+      "moduleId": "blk_mvibzsc5a5g5ljw",
+      "entityId": "loc_mvibzsc47cuczid",
+      "timeId": "cp_mvibzsc5jiz5tfg",
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc641wcjw9",
+      "moduleId": "blk_mvibzsc541ak7gy",
+      "entityId": "loc_mvibzsc47cuczid",
+      "timeId": "cp_mvibzsc576beu3v",
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6efjrh6i",
+      "moduleId": "blk_mvibzsc5b8fhl6v",
+      "entityId": "npc_mvibzsc5wkn6oh6",
+      "timeId": null,
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc6rdbe7jj",
+      "moduleId": "blk_mvibzsc5jr9e1lp",
+      "entityId": "loc_mvibzsc43x133u8",
+      "timeId": "cp_mvibzsc5jiz5tfg",
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.157Z"
+    },
+    {
+      "id": "asg_mvibzsc63kpfvrd",
+      "moduleId": "blk_mvibzsc6mxxar7h",
+      "entityId": "loc_mvibzsc43x133u8",
+      "timeId": "cp_mvibzsc576beu3v",
+      "order": 0,
+      "createdAt": "2026-10-21T16:33:19.158Z"
+    }
+  ],
+  "dcChecks": [
+    {
+      "id": "dcc_mvibzsc5me5inlb",
+      "name": "Notice the hum",
+      "checkType": "perception",
+      "mode": "passfail",
+      "stackTiers": true,
+      "allowBoth": false,
+      "table": [],
+      "conditions": [
+        {
+          "id": "dcond_mvibzsc55wllgix",
+          "trigger": "failure",
+          "dc": 14,
+          "occurrence": 1,
+          "text": "Just the wind in the rusted frame."
+        },
+        {
+          "id": "dcond_mvibzsc5s2xpei4",
+          "trigger": "success",
+          "dc": 14,
+          "occurrence": 1,
+          "text": "A faint, repeating pulse — somewhere behind the door."
+        }
+      ],
+      "rollLog": [],
+      "createdAt": "2026-10-21T16:33:19.157Z",
+      "conditionId": "cnd_mvibzsc56t6ayb"
+    }
+  ],
+  "graph": {
+    "positions": {},
+    "hidden": {},
+    "roles": {}
+  },
+  "conditions": [
+    {
+      "id": "cnd_mvibzsc56t6ayb",
+      "name": "Notice the hum",
+      "kind": "dice",
+      "states": [],
+      "current": null,
+      "settings": {
+        "checkType": "perception",
+        "dc": 14,
+        "critMargin": 0,
+        "natCrit": true
+      },
+      "rollLog": [],
+      "linkedCheckId": "dcc_mvibzsc5me5inlb"
+    }
+  ],
+  "meta": {
+    "nextColorIndex": 4,
+    "startBookmark": null,
+    "completedSinceStart": [],
+    "collapsedGroupIds": [],
+    "contentLibraryFilters": {
+      "search": "",
+      "type": "",
+      "entityId": "",
+      "unassignedOnly": false,
+      "sort": "name"
+    },
+    "collapsedLibraryGroups": [],
+    "collapsedPresenceGroups": [],
+    "lastGroupByType": {},
+    "lastContentLocationId": null,
+    "lastContentTimeId": null,
+    "openTopicIds": [],
+    "lastContentField": null
+  }
+}
