@@ -65,9 +65,7 @@ let ui = {
   groupManagerOpen: false,
   bulkAddOpen: false,
   bulkAddType: 'npc',
-  confirmDeleteGroupId: null,
-  entitySelectMode: false,
-  selectedEntityIds: []
+  confirmDeleteGroupId: null
 };
 
 // --- tiny inline icon set (no external/CDN dependency, works offline) ----
@@ -218,7 +216,7 @@ function npcs() { return Object.values(campaign.entities).filter((e) => e.type =
 function maybeOpenNotion(entityId) {
   const entity = campaign.entities[entityId];
   if (!entity || !entity.notionUrl || !entity.notionUrl.trim()) return;
-  window.core.openNotionLink(entity.notionUrl.trim()).then((result) => {
+  window.core.openNotionLink(toNotionScheme(entity.notionUrl)).then((result) => {
     if (!result || !result.ok) {
       console.warn('[notion] could not open link for', entity.name, '-', result && result.error);
     }
@@ -458,8 +456,6 @@ async function resetUiForCampaign() {
   ui.groupManagerOpen = false;
   ui.bulkAddOpen = false;
   ui.confirmDeleteGroupId = null;
-  ui.entitySelectMode = false;
-  ui.selectedEntityIds = [];
   ui.libraryAssignPickerOpen = false;
   ui.libraryAssignSelectedEntityIds = [];
   ui.libraryAssignResultNote = null;
@@ -759,6 +755,11 @@ function renderSettingsBody() {
         <input type="text" id="settings-app-folder" value="${esc(appSettings.directorAppFolderPath || '')}" placeholder="Where main.py or the compiled exe lives" style="flex:1">
         <button class="icon-btn" onclick="window.app.browseSettingsFolder('settings-app-folder')">Browse…</button>
       </div>
+    </div>
+    <div class="section-label">Notion links</div>
+    <p class="hint">A Notion link on an NPC or location (paste the normal https:// link, it is converted) opens in your Notion desktop app when you open that entity in Play. The default install location is used automatically; only change this if Notion lives elsewhere. If the file is not found, the system's own handler for notion:// links is tried.</p>
+    <div class="form-row"><label>Notion app (optional)</label>
+      <input type="text" id="settings-notion-exe" value="${esc(appSettings.notionExePath || '')}" placeholder="…\\Programs\\Notion\\Notion.exe">
     </div>
     <div class="section-label">Artwork</div>
     <p class="hint">Artwork default folder: when a new NPC or location gets a name, images in this folder (and its subfolders) with a matching file name are offered as its image. Matching is forgiving — "Mira Selven" finds MiraSelven.png, mira-selven.jpg, Mira_Selven_02.webp…</p>
@@ -1426,13 +1427,11 @@ function renderCreateEntitiesInner() {
     <div class="inline" style="margin-bottom:10px;flex-wrap:wrap">
       <button class="icon-btn" onclick="window.app.toggleGroupManager()">${icon('clock')} ${ui.groupManagerOpen ? 'Hide' : 'Manage'} groups</button>
       <button class="icon-btn" onclick="window.app.toggleBulkAdd()">${icon('plus')} ${ui.bulkAddOpen ? 'Hide' : 'Bulk add'}</button>
-      <button class="icon-btn" onclick="window.app.toggleSelectMode()">${icon('check')} ${ui.entitySelectMode ? 'Done selecting' : 'Select multiple'}</button>
       <button class="icon-btn" onclick="window.app.openNotionImport()">${icon('plus')} Import content</button>
       <button class="icon-btn" onclick="window.app.openTransfer()">${icon('chevronRight')} Transfer to other campaign</button>
     </div>
     ${ui.groupManagerOpen ? renderGroupManagerHTML(groups) : ''}
     ${ui.bulkAddOpen ? renderBulkAddHTML(groups) : ''}
-    ${ui.entitySelectMode ? renderSelectToolbarHTML(groups) : ''}
     <div id="entity-list-container"></div>
     <button class="icon-btn" onclick="window.app.newEntityForm()">${icon('plus')} ${ui.newEntityDraft && ui.createSelectedEntityId !== 'new' ? 'Continue new entity' : 'New entity'}</button>
     <div class="divider"></div>
@@ -1552,15 +1551,6 @@ function renderGroupNodeHTML(group, groups, list, depth, searchActive, opts = {}
 function renderEntityRowHTML(e, depth) {
   const indent = Math.min(depth || 0, 4) * 16;
   const indentStyle = indent > 0 ? `margin-left:${indent}px` : '';
-  if (ui.entitySelectMode) {
-    const checked = ui.selectedEntityIds.includes(e.id);
-    return `<div class="entity-row" style="${indentStyle}" onclick="window.app.toggleEntitySelected('${e.id}')">
-      <input type="checkbox" ${checked ? 'checked' : ''} style="pointer-events:none">
-      ${entityBadge(e, 20)}
-      <span class="name">${esc(e.name)}</span>
-      <span class="type-tag">${e.type}</span>
-    </div>`;
-  }
   return `<div class="entity-row" style="${indentStyle}" onclick="window.app.selectCreateEntity('${e.id}')">
     ${entityBadge(e, 20)}
     <span class="name">${esc(e.name)}</span>
@@ -1931,28 +1921,6 @@ function renderBulkAddHTML(groups) {
       <textarea id="bulk-add-names" placeholder="Grey man, Old sailor, Merchant"></textarea>
     </div>
     <button class="primary icon-btn" onclick="window.app.confirmBulkAdd()">${icon('check')} Add all</button>
-  </div>`;
-}
-
-// Shown in select-mode: a running count, a group to assign the selection
-// to, and quick select-all-visible / clear-selection actions. "Visible"
-// respects the current search filter, so searching then "select all" is a
-// fast way to bulk-assign just a matching subset.
-function renderSelectToolbarHTML(groups) {
-  const count = ui.selectedEntityIds.length;
-  return `<div class="scene-editor">
-    <div class="section-label">${count} selected</div>
-    <div class="inline">
-      <select id="bulk-assign-group">
-        <option value="">Ungrouped</option>
-        ${groupOptionsHTML(groups, null)}
-      </select>
-      <button class="icon-btn" ${count === 0 ? 'disabled' : ''} onclick="window.app.confirmBulkAssignGroup()">${icon('check')} Assign</button>
-    </div>
-    <div class="inline" style="margin-top:6px">
-      <button class="icon-btn" onclick="window.app.selectAllVisibleEntities()">Select all visible</button>
-      <button class="icon-btn" onclick="window.app.clearEntitySelection()">Clear selection</button>
-    </div>
   </div>`;
 }
 
@@ -2529,7 +2497,7 @@ function renderEntityEditor(entityId) {
         </select>
       </div>` : ''}
       <div class="form-row"><label>Name</label><input type="text" id="ee-name" value="${esc(entity.name)}" ${draft ? 'placeholder="Required"' : ''} oninput="window.app.onEntityFieldInput('${entity.id}','name',this.value)" onchange="window.app.offerArtwork('${entity.id}',false)"></div>
-      <div class="form-row"><label>Summary</label><textarea id="ee-summary" oninput="window.app.onEntityFieldInput('${entity.id}','summary',this.value)">${esc(entity.summary)}</textarea></div>
+      <div class="form-row"><label>Summary <span class="hint" style="font-weight:400">(not shown in Play, only used for searching here and as a hover preview when an entity has no general notes)</span></label><textarea id="ee-summary" oninput="window.app.onEntityFieldInput('${entity.id}','summary',this.value)">${esc(entity.summary)}</textarea></div>
       <div class="form-row"><label>Notion link</label><input type="text" value="${esc(entity.notionUrl)}" oninput="window.app.onEntityFieldInput('${entity.id}','notionUrl',this.value)"></div>
       <div class="form-row"><label>Group</label>
         <select onchange="window.app.updateEntityGroup('${entity.id}',this.value)">
@@ -4213,7 +4181,29 @@ function renderNotionImportModal() {
     const checkpoints = window.Query.sortedCheckpoints(campaign);
     bodyEl.innerHTML = `
       <div class="form-row">
-        <label>Paste the outline for ONE location below — everything nested under its first bullet (an "NPC" section, dialogue topics, DC Checks in the agreed Win/Fail or DC-table format).</label>
+        <label>Paste the outline for ONE location</label>
+        <div class="import-help">
+          <p><b>What it expects.</b> A Notion page copied or exported as a bulleted outline (each line starting with <code>- </code>, nested with indentation). Only the <b>first top-level bullet</b> is imported: it becomes the <b>location</b>. Blank lines are ignored.</p>
+          <ul>
+            <li><b>Location description:</b> everything under the location bullet becomes its description (nested lines are kept, indented), except the sections below.</li>
+            <li><b>NPCs:</b> a child bullet called <code>NPC</code> or <code>NPCs</code> holds the characters, one bullet per NPC. A bullet counts as a character when something under it looks like <code>Label: text</code> (for example <code>Race: Human</code>). A bullet containing two or more such characters is treated as a group header (e.g. "Guards") and its children are imported as separate NPCs.</li>
+            <li><b>Inside an NPC:</b> plain lines (paragraphs, or bullets with nothing under them) become the NPC's general note. A bullet <i>with</i> lines under it becomes a <b>dialogue topic</b> (the bullet text is the topic title). A section called <code>Visuell</code> is folded into the general note instead.</li>
+            <li><b>Inventory:</b> a bullet called <code>Inventar</code>, <code>Inventory</code> or <code>Inventur</code> containing a markdown table (<code>| Name | Price |</code> with a <code>|---|---|</code> line) becomes an inventory table. The first column is the item name, the last the price.</li>
+          </ul>
+          <p><b>Not imported automatically:</b> DC checks, conditions and quests. Add those afterwards (Alt+D, right-click &gt; Make conditional / Quest…). Names are matched to what you already have: new things are added, identical ones skipped, and differing ones are shown for you to decide. Nothing is overwritten without asking.</p>
+          <pre class="import-example">- Rusted spire market
+    - A market built into a downed tether…
+    - NPC
+        - Grey man
+            - Race: Human
+            - Former signal corps engineer.
+            - Ask about the signal
+                - He goes quiet, then mutters about a pattern…
+            - Inventar
+                | Item | Price |
+                |---|---|
+                | Salvaged relay | 40 |</pre>
+        </div>
         <textarea id="notion-import-paste" rows="16" placeholder="Paste from Notion here…"></textarea>
       </div>
       <div class="form-row">
@@ -6589,7 +6579,9 @@ window.app = {
     const prepRoot = document.getElementById('settings-prep-root');
     const appFolder = document.getElementById('settings-app-folder');
     const artFolder = document.getElementById('settings-artwork-folder');
+    const notionExe = document.getElementById('settings-notion-exe');
     const updated = {
+      ...(notionExe ? { notionExePath: notionExe.value.trim() } : {}),
       artworkFolderPath: artFolder ? artFolder.value.trim() : '',
       directorPrepRootPath: prepRoot ? prepRoot.value.trim() : '',
       directorAppFolderPath: appFolder ? appFolder.value.trim() : ''
@@ -6844,38 +6836,6 @@ window.app = {
     ui.mgSelected = [];
     ui.mgAnchor = null;
     mgSyncSelectionUI();
-  },
-  toggleSelectMode() {
-    ui.entitySelectMode = !ui.entitySelectMode;
-    if (!ui.entitySelectMode) ui.selectedEntityIds = [];
-    ui.groupManagerOpen = false;
-    ui.bulkAddOpen = false;
-    renderCreateEntities();
-  },
-  toggleEntitySelected(id) {
-    const idx = ui.selectedEntityIds.indexOf(id);
-    if (idx === -1) ui.selectedEntityIds.push(id); else ui.selectedEntityIds.splice(idx, 1);
-    renderCreateEntities();
-  },
-  selectAllVisibleEntities() {
-    const query = (ui.entitySearchQuery || '').toLowerCase();
-    const allList = Object.values(campaign.entities);
-    const visible = query
-      ? allList.filter((e) => e.name.toLowerCase().includes(query) || (e.summary || '').toLowerCase().includes(query))
-      : allList;
-    ui.selectedEntityIds = visible.map((e) => e.id);
-    renderCreateEntities();
-  },
-  clearEntitySelection() {
-    ui.selectedEntityIds = [];
-    renderCreateEntities();
-  },
-  async confirmBulkAssignGroup() {
-    const sel = document.getElementById('bulk-assign-group');
-    const groupId = sel && sel.value ? sel.value : null;
-    window.DataModel.assignEntitiesToGroup(campaign, ui.selectedEntityIds, groupId);
-    ui.selectedEntityIds = [];
-    await refresh();
   },
   onEntityGroupNameInput(groupId, value) {
     const group = (campaign.entityGroups || []).find((g) => g.id === groupId);

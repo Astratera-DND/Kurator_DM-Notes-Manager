@@ -1198,3 +1198,10 @@ A location opened as a card or full page (from a mention, a "present here" chip)
 
 ### v108
 - The example / first-launch campaign (`src/seed.js`, regenerated into `examples/campaign-data`) now shows a quest ("The grey man's debt", three steps across a scene, a topic and a new scene) and a DC check (perception at the Scrap gate) with a conditional sentence that appears only when the check succeeds. Only new installs and the shipped example change; existing campaigns are untouched.
+
+### v109
+- Removed Entities > "Select multiple" (Manage groups does multi-select and drag; `DataModel.assignEntitiesToGroup` stays, it is tested).
+- Import content: a format guide at the top (what becomes location / NPC / topic / inventory, what is not imported, a small example). The old text promised DC-check detection that does not exist.
+- Summary is labelled "(not shown in Play …)": it is only used for searching in Create and as the hover preview when an entity has no general notes.
+- Notion links: a pasted https:// link is now converted to notion:// when an entity is opened in Play (before, only the Alt+S Notion button converted). `notion:open` converts in main too; it uses Notion.exe when found (path now editable in Settings > Notion links), otherwise `shell.openExternal` hands the notion:// link to whatever app the system has registered.
+- TODO (future): Windows exe is unsigned, so Chrome/SmartScreen warn on download. Add a README note, SHA-256 checksum in the release step, attach the exe to the Release, consider SignPath Foundation code signing.

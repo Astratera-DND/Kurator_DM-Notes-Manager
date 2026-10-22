@@ -1172,7 +1172,7 @@ function gvEntWinHTML(e) {
     </div>
     <div class="gv-win-body" id="gv-win-body">
     <div class="form-row"><label>Name</label><input type="text" id="gv-ew-name" value="${esc(e.name)}" oninput="window.app.gvEntField('${e.id}','name',this.value)"></div>
-    <div class="form-row"><label>Summary</label><textarea id="gv-ew-summary" class="gv-win-text" style="min-height:54px" oninput="window.app.gvEntField('${e.id}','summary',this.value)">${esc(e.summary || '')}</textarea></div>`;
+    <div class="form-row"><label>Summary <span class="hint" style="font-weight:400">(not shown in Play; search and hover preview only)</span></label><textarea id="gv-ew-summary" class="gv-win-text" style="min-height:54px" oninput="window.app.gvEntField('${e.id}','summary',this.value)">${esc(e.summary || '')}</textarea></div>`;
 
   // Content, grouped by when it is live.
   groups.forEach((grp) => {

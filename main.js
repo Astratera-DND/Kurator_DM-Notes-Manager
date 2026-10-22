@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -300,44 +300,28 @@ app.whenReady().then(() => {
   });
 
   // --- Open an entity's Notion link in the local Notion app -------------
-  // Launches Notion.exe directly with the URL as an argument, rather than
-  // shell.openExternal (which would hand https:// links to the default
-  // browser). The exe path lives in settings.json, editable by hand if it
-  // ever changes. Not verified against a live Notion install — if the
-  // app opens but doesn't navigate to the right page, that's the most
-  // likely place something needs adjusting (Notion may expect a
-  // notion://-scheme link rather than a plain https:// URL as an
-  // argument — worth trying if the plain URL doesn't land correctly).
-  ipcMain.handle('notion:open', (_event, url) => {
-    if (!url || !url.trim()) return { ok: false, error: 'No Notion link set for this entity.' };
+  // Opens a Notion link in the desktop app: Notion.exe (path in Settings / settings.json) when it exists,
+  // otherwise whatever app the system has registered for notion:// links. https:// links are converted.
+  ipcMain.handle('notion:open', async (_event, rawUrl) => {
+    if (!rawUrl || !String(rawUrl).trim()) return { ok: false, error: 'No Notion link set for this entity.' };
+    // Notion opens pages in its desktop app from a notion:// link; a copied https:// link is converted.
+    const url = String(rawUrl).trim().replace(/^https?:\/\//i, 'notion://');
     const exePath = appSettings.notionExePath;
-    if (!exePath || !fs.existsSync(exePath)) {
-      return { ok: false, error: `Notion executable not found at: ${exePath}. Check settings.json.` };
+    // 1) Notion.exe at the configured / default path (the proven route).
+    if (exePath && fs.existsSync(exePath)) {
+      return new Promise((resolve) => {
+        let settled = false;
+        try {
+          const child = spawn(exePath, [url], { detached: true, stdio: 'ignore' });
+          child.once('error', (err) => { if (settled) return; settled = true; resolve({ ok: false, error: err.message }); });
+          child.unref();
+          setTimeout(() => { if (settled) return; settled = true; resolve({ ok: true }); }, 300);
+        } catch (err) { resolve({ ok: false, error: err.message }); }
+      });
     }
-    return new Promise((resolve) => {
-      let settled = false;
-      try {
-        const child = spawn(exePath, [url.trim()], { detached: true, stdio: 'ignore' });
-        child.once('error', (err) => {
-          if (settled) return;
-          settled = true;
-          console.error('[notion] failed to launch:', err.message);
-          resolve({ ok: false, error: err.message });
-        });
-        child.unref();
-        // Notion is a long-running GUI app — its process won't exit when
-        // we're done with it, so there's nothing to "wait for completion"
-        // on. Give the 'error' event (e.g. a bad path) a short window to
-        // fire before assuming the launch succeeded.
-        setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          resolve({ ok: true });
-        }, 300);
-      } catch (err) {
-        resolve({ ok: false, error: err.message });
-      }
-    });
+    // 2) No Notion.exe at that path: let the system open the notion:// link with whatever app is registered for it.
+    try { await shell.openExternal(url); return { ok: true }; }
+    catch (err) { return { ok: false, error: `Notion was not found at ${exePath || '(no path)'} and the system could not open the link (${err.message}).` }; }
   });
 
   // --- App settings (Notion path, Director-tool paths) ------------------
