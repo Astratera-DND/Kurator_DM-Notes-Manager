@@ -10,7 +10,7 @@ There is a "mark as complete" checkbox that allows you to hide the note once it 
 If you didn't mark something it will come up on the next "milestone" in case you just missed it. 
 
 There is also a nice connection to another Tool, that allows you to control playlists, soundeffects and even concept art if you have that. (optional)
-
+<p align="center"><img src="renderer/icon.ico" alt="Kurator icon" width="110"></p>
 
 
 ![Play mode](docs/screenshots/play-mode.png)
