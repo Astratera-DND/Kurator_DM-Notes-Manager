@@ -72,6 +72,7 @@ let ui = {
 
 function icon(name) {
   const paths = {
+    pin: '<path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/>',
     idcard: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4M6 16c.6-1.6 4.4-1.6 5 0"/>',
     chevronDown: '<path d="M6 9l6 6 6-6"/>',
     chevronUp: '<path d="M18 15l-6-6-6 6"/>',
@@ -2042,11 +2043,11 @@ function renderStatblockHTML(statblock) {
         <td class="cc-num">${a.modText}</td>
         <td class="cc-num${a.saveProf ? ' cc-prof' : ''}">${a.saveText}</td>
       </tr>
-      <tr class="cc-skillrow"><td colspan="4">${skills.map((k) => `<span class="cc-skill${k.level === 1 ? ' prof' : ''}${k.level === 2 ? ' expert' : ''}">${esc(k.name)} <b>${k.bonusText}</b></span>`).join('')}</td></tr>
+      <tr class="cc-skillrow"><td colspan="4">${skills.map((k) => `<span class="cc-skill${k.level === 1 ? ' prof' : ''}${k.level === 2 ? ' expert' : ''}${k.manual ? ' manual' : ''}"${k.manual ? ' title="Set by hand"' : ''}>${esc(k.name)} <b>${k.bonusText}</b></span>`).join('')}</td></tr>
     </tbody>`;
   }).join('');
   const profLine = r.proficientSkills.length
-    ? `<div class="cc-line"><b>Skills</b> ${r.proficientSkills.map((k) => `${esc(k.name)} ${k.bonusText}${k.level === 2 ? ' (expertise)' : ''}`).join(', ')}</div>` : '';
+    ? `<div class="cc-line"><b>Skills</b> ${r.proficientSkills.map((k) => `${esc(k.name)} ${k.bonusText}${k.manual ? '*' : ''}${k.level === 2 && !k.manual ? ' (expertise)' : ''}`).join(', ')}</div>` : '';
   const senses = [sb.senses && sb.senses.trim(), `Passive Perception ${r.passivePerception}${r.passivePerceptionManual ? '*' : ''}`, `Passive Insight ${r.passiveInsight}${r.passiveInsightManual ? '*' : ''}`].filter(Boolean).join('; ');
   return `<div class="cc-statblock">
     <div class="cc-type">${esc(r.typeLine)}</div>
@@ -2105,12 +2106,13 @@ function renderCardChipsHTML(entity) {
 function renderRoleplayStripHTML(entity) {
   if (!entity || entity.type !== 'npc') return '';
   const rp = window.CharacterCard.roleplay(entity);
-  const skill = (k) => `<span class="cc-rp-chip${k.level ? ' prof' : ''}">${esc(k.name)} <b>${k.bonusText}</b></span>`;
+  const skill = (k) => `<span class="cc-rp-chip${k.level ? ' prof' : ''}${k.manual ? ' manual' : ''}"${k.manual ? ' title="Set by hand"' : ''}>${esc(k.name)} <b>${k.bonusText}</b></span>`;
   return `<div class="cc-rp-strip" onclick="window.app.openCharacterCard('${entity.id}')" title="Open the full character card">
     <span class="cc-rp-chip cc-rp-passive${rp.passivePerceptionManual ? ' manual' : ''}"${rp.passivePerceptionManual ? ' title="Set by hand"' : ''}>Passive Perception <b>${rp.passivePerception}</b></span>
     <span class="cc-rp-chip cc-rp-passive${rp.passiveInsightManual ? ' manual' : ''}"${rp.passiveInsightManual ? ' title="Set by hand"' : ''}>Passive Insight <b>${rp.passiveInsight}</b></span>
     ${rp.skills.map(skill).join('')}
     ${rp.languages ? `<span class="cc-rp-chip cc-rp-lang">${esc(rp.languages)}</span>` : ''}
+    ${window.CharacterCard.pinnedFields(entity).map((f) => `<div class="cc-rp-pinrow"><span class="cc-rp-pinlabel">${esc(f.label)}</span> ${esc(f.text)}</div>`).join('')}
   </div>`;
 }
 
@@ -2118,7 +2120,9 @@ function renderCardTextFieldsHTML(entity, group, fields) {
   const values = (entity.characterCard && entity.characterCard[group]) || {};
   return `<div class="cc-fields">` + fields.map((f) => {
     const attrs = `placeholder="${esc(f.placeholder)}" oninput="window.app.onCardTextInput('${entity.id}','${group}','${f.key}',this.value)"`;
-    return `<div class="form-row${f.long ? ' cc-long' : ''}"><label>${esc(f.label)}</label>${f.long
+    const pinned = window.CharacterCard.isPinned(entity, group, f.key);
+    const pin = `<button type="button" class="cc-pin${pinned ? ' on' : ''}" data-pin="${group}.${f.key}" title="${pinned ? 'Shown on the quick card in Play (click to remove)' : 'Also show this on the quick card in Play'}" onclick="window.app.toggleCardPin('${entity.id}','${group}','${f.key}',this)">${icon('pin')}</button>`;
+    return `<div class="form-row${f.long ? ' cc-long' : ''}"><label>${esc(f.label)} ${pin}</label>${f.long
       ? `<textarea style="min-height:44px" ${attrs}>${esc(values[f.key] || '')}</textarea>`
       : `<input type="text" value="${esc(values[f.key] || '')}" ${attrs}>`}</div>`;
   }).join('') + `</div>`;
@@ -2126,16 +2130,34 @@ function renderCardTextFieldsHTML(entity, group, fields) {
 
 function renderSkillButtonsHTML(entity) {
   const r = window.CharacterCard.resolve(window.CharacterCard.getStatblock(entity));
-  return r.skills.map((k) => `<button class="cc-skillbtn${k.level === 1 ? ' prof' : ''}${k.level === 2 ? ' expert' : ''}" title="Click to cycle: none, proficient, expertise" onclick="window.app.cycleCardSkill('${entity.id}','${esc(k.name)}')">
-      <span>${esc(k.name)} <small>${k.ability.toUpperCase()}</small></span><b>${k.bonusText}${k.level === 2 ? ' ★' : ''}</b></button>`).join('');
+  return r.skills.map((k) => `<button class="cc-skillbtn${k.level === 1 ? ' prof' : ''}${k.level === 2 ? ' expert' : ''}${k.manual ? ' manual' : ''}" title="${k.manual ? `Set by hand (calculated: ${k.autoText}). Right-click or Shift+click to change or clear` : 'Click to cycle: none, proficient, expertise. Right-click or Shift+click to type a custom bonus'}" onclick="window.app.cycleCardSkill('${entity.id}','${esc(k.name)}',event)" oncontextmenu="window.app.skillOverrideOpen(event,'${entity.id}','${esc(k.name)}')">
+      <span>${esc(k.name)} <small>${k.ability.toUpperCase()}</small></span><b>${k.bonusText}${k.manual ? '*' : (k.level === 2 ? ' ★' : '')}</b></button>`).join('');
 }
+
+// Plain text fields that only take whole numbers (digits from either keyboard row), so the numpad
+// types instead of nudging a spinner. Up/Down still step the value by one.
+function ccNumKey(ev) {
+  const el = ev.target;
+  if ((ev.key === 'ArrowUp' || ev.key === 'ArrowDown') && !ev.altKey && !ev.ctrlKey) {
+    ev.preventDefault();
+    const cur = parseInt(el.value, 10); const n = (Number.isFinite(cur) ? cur : 0) + (ev.key === 'ArrowUp' ? 1 : -1);
+    el.value = String(Math.max(0, n));
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+  if (ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !/[0-9]/.test(ev.key)) ev.preventDefault();
+}
+
+function ccSkillOverrideClose() { const b = document.getElementById('cc-skill-override'); if (b) b.remove(); document.removeEventListener('mousedown', ccSkillOverrideOutside, true); }
+function ccSkillOverrideOutside(ev) { if (!ev.target.closest || !ev.target.closest('#cc-skill-override')) ccSkillOverrideClose(); }
 
 function renderStatblockFormHTML(entity) {
   const CC = window.CharacterCard;
   const sb = entity.characterCard.statblock;
   const id = entity.id;
   const text = (field, label, wide) => `<div class="form-row${wide ? ' cc-wide' : ''}"><label>${label}</label><input type="text" value="${esc(sb[field])}" oninput="window.app.onStatblockInput('${id}','${field}',this.value)"></div>`;
-  const num = (field, label) => `<div class="form-row"><label>${label}</label><input type="number" value="${sb[field]}" oninput="window.app.onStatblockInput('${id}','${field}',this.value)" onchange="window.app.onStatblockChange('${id}','${field}',this)"></div>`;
+  const num = (field, label) => `<div class="form-row"><label>${label}</label><input type="text" inputmode="numeric" autocomplete="off" onkeydown="ccNumKey(event)" value="${sb[field]}" oninput="window.app.onStatblockInput('${id}','${field}',this.value)" onchange="window.app.onStatblockChange('${id}','${field}',this)"></div>`;
   const r = CC.resolve(sb);
   return `<div class="cc-form">
     <div class="cc-grid3">
@@ -2156,12 +2178,12 @@ function renderStatblockFormHTML(entity) {
     <div class="cc-abil-grid">
       ${r.abilities.map((a) => `<div class="cc-abil">
         <label>${a.label}</label>
-        <input type="number" value="${a.score}" min="1" max="30" oninput="window.app.onStatblockInput('${id}','abilities.${a.key}',this.value)" onchange="window.app.onStatblockChange('${id}','abilities.${a.key}',this)">
+        <input type="text" inputmode="numeric" autocomplete="off" onkeydown="ccNumKey(event)" value="${a.score}" oninput="window.app.onStatblockInput('${id}','abilities.${a.key}',this.value)" onchange="window.app.onStatblockChange('${id}','abilities.${a.key}',this)">
         <div class="cc-mod" data-key="${a.key}">${a.modText}</div>
         <label class="cc-save"><input type="checkbox" ${a.saveProf ? 'checked' : ''} onchange="window.app.toggleCardSave('${id}','${a.key}',this.checked)"> save <span class="cc-savebonus" data-key="${a.key}">${a.saveText}</span></label>
       </div>`).join('')}
     </div>
-    <div class="cc-h">Skills <span class="hint" style="display:inline;margin:0">click to cycle none → proficient → expertise</span></div>
+    <div class="cc-h">Skills <span class="hint" style="display:inline;margin:0">click to cycle none → proficient → expertise · right-click (or Shift+click) to type a custom bonus</span></div>
     <div class="cc-skillgrid" id="cc-skills">${renderSkillButtonsHTML(entity)}</div>
     <div class="cc-grid2">
       ${text('senses', 'Senses (besides passive Perception)')}
@@ -2169,9 +2191,9 @@ function renderStatblockFormHTML(entity) {
     </div>
     <div class="cc-grid2">
       <div class="form-row"><label>Passive Perception <span class="cc-auto" id="cc-auto-pp">${r.passivePerceptionManual ? `(auto ${r.passivePerceptionAuto})` : '(auto)'}</span></label>
-        <input type="number" id="cc-pp-input" min="0" max="99" value="${sb.passivePerceptionOverride == null ? '' : sb.passivePerceptionOverride}" placeholder="auto (${r.passivePerceptionAuto})" oninput="window.app.onStatblockInput('${id}','passivePerceptionOverride',this.value)"></div>
+        <input type="text" inputmode="numeric" autocomplete="off" onkeydown="ccNumKey(event)" id="cc-pp-input" value="${sb.passivePerceptionOverride == null ? '' : sb.passivePerceptionOverride}" placeholder="auto (${r.passivePerceptionAuto})" oninput="window.app.onStatblockInput('${id}','passivePerceptionOverride',this.value)"></div>
       <div class="form-row"><label>Passive Insight <span class="cc-auto" id="cc-auto-pi">${r.passiveInsightManual ? `(auto ${r.passiveInsightAuto})` : '(auto)'}</span></label>
-        <input type="number" id="cc-pi-input" min="0" max="99" value="${sb.passiveInsightOverride == null ? '' : sb.passiveInsightOverride}" placeholder="auto (${r.passiveInsightAuto})" oninput="window.app.onStatblockInput('${id}','passiveInsightOverride',this.value)"></div>
+        <input type="text" inputmode="numeric" autocomplete="off" onkeydown="ccNumKey(event)" id="cc-pi-input" value="${sb.passiveInsightOverride == null ? '' : sb.passiveInsightOverride}" placeholder="auto (${r.passiveInsightAuto})" oninput="window.app.onStatblockInput('${id}','passiveInsightOverride',this.value)"></div>
     </div>
     <div class="hint" style="margin:-2px 0 6px">Passive scores calculate themselves from the skills. Type a number to override one (story, magic items, other bonuses); clear the field to go back to automatic.</div>
     ${text('gear', 'Gear', true)}
@@ -2261,7 +2283,8 @@ function refreshCardEditorBits(entity) {
       r.skills.forEach((k, i) => {
         buttons[i].classList.toggle('prof', k.level === 1);
         buttons[i].classList.toggle('expert', k.level === 2);
-        buttons[i].querySelector('b').textContent = `${k.bonusText}${k.level === 2 ? ' ★' : ''}`;
+        buttons[i].classList.toggle('manual', k.manual);
+        buttons[i].querySelector('b').textContent = `${k.bonusText}${k.manual ? '*' : (k.level === 2 ? ' ★' : '')}`;
       });
     } else skills.innerHTML = renderSkillButtonsHTML(entity);
   }
@@ -6426,6 +6449,48 @@ window.app = {
     const on = sb.classList.toggle('open-all');
     sb.querySelectorAll('.cc-ab').forEach((el) => el.classList.toggle('open', on));
   },
+  // Custom skill bonus: a small box at the skill. Enter sets it, "Auto" goes back to the calculated bonus.
+  skillOverrideOpen(ev, id, name) {
+    ev.preventDefault(); ev.stopPropagation();
+    const entity = campaign.entities[id];
+    if (!entity || !entity.characterCard || !entity.characterCard.statblock) return;
+    const k = window.CharacterCard.resolve(entity.characterCard.statblock).skills.find((x) => x.name === name);
+    if (!k) return;
+    ccSkillOverrideClose();
+    const box = document.createElement('div');
+    box.id = 'cc-skill-override'; box.className = 'cc-skill-override';
+    box.innerHTML = `<div class="cc-so-title">${esc(name)} <span class="hint" style="display:inline;margin:0">calculated ${k.autoText}</span></div>
+      <div class="inline"><input type="text" inputmode="numeric" autocomplete="off" id="cc-so-input" value="${k.manual ? k.bonus : ''}" placeholder="${k.autoBonus}" style="width:70px">
+      <button class="icon-btn" id="cc-so-ok">Set</button><button class="icon-btn" id="cc-so-auto">Auto</button></div>`;
+    document.body.appendChild(box);
+    const r = ev.currentTarget && ev.currentTarget.getBoundingClientRect ? ev.currentTarget.getBoundingClientRect() : { left: ev.clientX, bottom: ev.clientY };
+    box.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - box.offsetWidth - 8))}px`;
+    box.style.top = `${Math.max(8, Math.min(r.bottom + 4, window.innerHeight - box.offsetHeight - 8))}px`;
+    const input = document.getElementById('cc-so-input'); input.focus(); input.select();
+    const apply = (clear) => {
+      const sb = entity.characterCard.statblock; sb.skillOverrides = sb.skillOverrides || {};
+      const txt = input.value.trim();
+      const n = parseInt(txt, 10);
+      if (clear || txt === '' || !Number.isFinite(n)) delete sb.skillOverrides[name]; else sb.skillOverrides[name] = Math.max(-20, Math.min(40, n));
+      ccSkillOverrideClose(); refreshCardEditorBits(entity); scheduleFieldSave(`cc-skill-${id}-${name}`);
+    };
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); apply(false); }
+      else if (e.key === 'Escape') { e.preventDefault(); ccSkillOverrideClose(); }
+      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !/[0-9+-]/.test(e.key)) e.preventDefault();
+    });
+    document.getElementById('cc-so-ok').onclick = () => apply(false);
+    document.getElementById('cc-so-auto').onclick = () => apply(true);
+    setTimeout(() => document.addEventListener('mousedown', ccSkillOverrideOutside, true), 0);
+  },
+  toggleCardPin(id, group, field, btn) {
+    const entity = campaign.entities[id];
+    if (!entity) return;
+    const on = window.CharacterCard.togglePinned(entity, group, field);
+    if (btn) { btn.classList.toggle('on', on); btn.title = on ? 'Shown on the quick card in Play (click to remove)' : 'Also show this on the quick card in Play'; }
+    scheduleFieldSave(`cc-pin-${id}`);
+  },
   onCardTextInput(id, group, field, value) {
     const entity = campaign.entities[id];
     if (!entity) return;
@@ -6514,7 +6579,8 @@ window.app = {
     refreshCardEditorBits(entity);
     scheduleFieldSave(`cc-save-${id}-${key}`);
   },
-  cycleCardSkill(id, name) {
+  cycleCardSkill(id, name, ev) {
+    if (ev && ev.shiftKey) { window.app.skillOverrideOpen(ev, id, name); return; }
     const entity = campaign.entities[id];
     if (!entity || !entity.characterCard || !entity.characterCard.statblock) return;
     const skills = entity.characterCard.statblock.skills;

@@ -186,5 +186,36 @@ test('override values are sanitised: junk and blanks mean automatic, numbers are
   assert.ok(!CC.isDefaultStatblock(e), 'an override counts as a customisation');
 });
 
+test('pinned voice / personality fields: only those with content show, bad keys are dropped', () => {
+  const e = { type: 'npc' };
+  CC.ensureCard(e);
+  e.characterCard.voice.pitch = 'low, gravelly';
+  assert.strictEqual(CC.togglePinned(e, 'voice', 'pitch'), true);
+  CC.togglePinned(e, 'persona', 'secret');           // pinned but empty
+  assert.deepStrictEqual(CC.pinnedFields(e).map((f) => f.key), ['pitch'], 'empty pinned fields stay hidden');
+  e.characterCard.persona.secret = 'Owes the Syndicate';
+  assert.deepStrictEqual(CC.pinnedFields(e).map((f) => `${f.group}.${f.key}`), ['voice.pitch', 'persona.secret']);
+  assert.strictEqual(CC.togglePinned(e, 'voice', 'pitch'), false);
+  assert.ok(!CC.isPinned(e, 'voice', 'pitch'));
+  e.characterCard.pinned = ['voice.accent', 'nonsense', 'voice.accent', 7];
+  assert.deepStrictEqual(CC.sanitizeCard(e.characterCard).pinned, ['voice.accent']);
+});
+
+test('a skill can carry a custom bonus that replaces the calculated one', () => {
+  const sb = CC.defaultStatblock();
+  sb.skills.Perception = 1;
+  sb.skillOverrides = { Perception: 9, Stealth: 'x', Arcana: '' , Bogus: 4 };
+  const r = CC.resolve(sb);
+  const per = r.skills.find((k) => k.name === 'Perception');
+  assert.ok(per.manual && per.bonus === 9 && per.bonusText === '+9' && per.autoBonus === 2);
+  assert.strictEqual(r.passivePerceptionAuto, 19, 'the passive score follows the custom bonus');
+  assert.ok(!r.skills.find((k) => k.name === 'Stealth').manual && !r.skills.find((k) => k.name === 'Arcana').manual);
+  assert.ok(!('Bogus' in CC.sanitizeStatblock(sb).skillOverrides));
+  assert.ok(r.proficientSkills.some((k) => k.name === 'Perception'));
+  const sb2 = CC.defaultStatblock(); sb2.skillOverrides = { History: -2 };
+  assert.ok(CC.resolve(sb2).proficientSkills.some((k) => k.name === 'History' && k.bonusText === '-2'), 'an override shows even without proficiency');
+  assert.ok(!CC.isDefaultStatblock({ characterCard: { statblock: sb2 } }), 'an override counts as customised');
+});
+
 if (failures) { console.log(`${failures} failed`); process.exit(1); }
 console.log('All character card tests passed.');

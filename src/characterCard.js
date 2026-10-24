@@ -104,6 +104,8 @@ function defaultStatblock() {
     abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
     saveProf: { str: false, dex: false, con: false, int: false, wis: false, cha: false },
     skills: {},
+    // A skill bonus set by hand (story reasons): { Perception: 7 }. Replaces the calculated bonus.
+    skillOverrides: {},
     // Passive scores are worked out from the skills unless one is set by hand
     // here (story, magic items, other bonuses). null = automatic.
     passivePerceptionOverride: null,
@@ -152,6 +154,13 @@ function sanitizeStatblock(raw) {
     const v = Number(sk[name]);
     if (v === 1 || v === 2) sb.skills[name] = v;
   });
+  const so = raw.skillOverrides && typeof raw.skillOverrides === 'object' ? raw.skillOverrides : {};
+  sb.skillOverrides = {};
+  SKILLS.forEach(({ name }) => {
+    if (so[name] === null || so[name] === undefined || so[name] === '') return;
+    const v = int(so[name], -20, 40, null);
+    if (v !== null) sb.skillOverrides[name] = v;
+  });
   return sb;
 }
 
@@ -161,12 +170,20 @@ function sanitizeTextGroup(raw, fields) {
   return out;
 }
 
+// Voice / personality fields the DM pinned to the NPC's quick card in Play: "voice.pitch", "persona.secret"…
+function validPinKeys() { return VOICE_FIELDS.map((f) => `voice.${f.key}`).concat(PERSONA_FIELDS.map((f) => `persona.${f.key}`)); }
+function sanitizePinned(raw) {
+  const ok = validPinKeys();
+  return Array.isArray(raw) ? raw.filter((k, i) => typeof k === 'string' && ok.includes(k) && raw.indexOf(k) === i) : [];
+}
+
 function sanitizeCard(raw) {
   const card = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   return {
     statblock: card.statblock ? sanitizeStatblock(card.statblock) : null,
     voice: sanitizeTextGroup(card.voice, VOICE_FIELDS),
-    persona: sanitizeTextGroup(card.persona, PERSONA_FIELDS)
+    persona: sanitizeTextGroup(card.persona, PERSONA_FIELDS),
+    pinned: sanitizePinned(card.pinned)
   };
 }
 
@@ -177,6 +194,7 @@ function ensureCard(entity) {
   if (!c.voice) c.voice = sanitizeTextGroup(null, VOICE_FIELDS);
   if (!c.persona) c.persona = sanitizeTextGroup(null, PERSONA_FIELDS);
   if (!('statblock' in c)) c.statblock = null;
+  if (!Array.isArray(c.pinned)) c.pinned = [];
   return c;
 }
 
@@ -225,8 +243,10 @@ function resolve(statblock) {
   const modOf = (k) => abilities.find((a) => a.key === k).mod;
   const skills = SKILLS.map(({ name, ability }) => {
     const level = sb.skills[name] || 0;
-    const bonus = modOf(ability) + pb * level;
-    return { name, ability, level, bonus, bonusText: fmt(bonus) };
+    const autoBonus = modOf(ability) + pb * level;
+    const manual = Object.prototype.hasOwnProperty.call(sb.skillOverrides, name);
+    const bonus = manual ? sb.skillOverrides[name] : autoBonus;
+    return { name, ability, level, bonus, bonusText: fmt(bonus), manual, autoBonus, autoText: fmt(autoBonus) };
   });
   const autoPerception = 10 + skills.find((s) => s.name === 'Perception').bonus;
   const autoInsight = 10 + skills.find((s) => s.name === 'Insight').bonus;
@@ -240,7 +260,7 @@ function resolve(statblock) {
     passiveInsight: sb.passiveInsightOverride != null ? sb.passiveInsightOverride : autoInsight,
     passivePerceptionManual: sb.passivePerceptionOverride != null,
     passiveInsightManual: sb.passiveInsightOverride != null,
-    proficientSkills: skills.filter((s) => s.level > 0),
+    proficientSkills: skills.filter((s) => s.level > 0 || s.manual),
     typeLine: `${sb.size} ${sb.creatureType}${sb.alignment ? `, ${sb.alignment}` : ''}`,
     hpText: sb.hpDice ? `${sb.hp} (${sb.hpDice})` : String(sb.hp)
   };
@@ -261,6 +281,29 @@ function roleplay(entity) {
   };
 }
 
+function isPinned(entity, group, key) {
+  return !!(entity && entity.characterCard && Array.isArray(entity.characterCard.pinned) && entity.characterCard.pinned.includes(`${group}.${key}`));
+}
+function togglePinned(entity, group, key) {
+  const c = ensureCard(entity);
+  const k = `${group}.${key}`;
+  if (!validPinKeys().includes(k)) return false;
+  const i = c.pinned.indexOf(k);
+  if (i === -1) c.pinned.push(k); else c.pinned.splice(i, 1);
+  return i === -1;
+}
+// Pinned fields that have content, in the order of the card (voice first), for the quick card in Play.
+function pinnedFields(entity) {
+  const card = entity && entity.characterCard;
+  if (!card || !Array.isArray(card.pinned)) return [];
+  const out = [];
+  [['voice', VOICE_FIELDS], ['persona', PERSONA_FIELDS]].forEach(([group, fields]) => fields.forEach((f) => {
+    const text = card[group] && typeof card[group][f.key] === 'string' ? card[group][f.key].trim() : '';
+    if (text && card.pinned.includes(`${group}.${f.key}`)) out.push({ group, key: f.key, label: f.label, text });
+  }));
+  return out;
+}
+
 // Short figures about the block (used in the Create editor's summary line).
 function summary(entity) {
   const r = resolve(getStatblock(entity));
@@ -272,6 +315,7 @@ const api = {
   abilityMod, fmt, crToNumber, proficiencyBonusForCR,
   defaultStatblock, sanitizeStatblock, sanitizeCard, ensureCard,
   hasVoiceOrPersona, getStatblock, ensureStatblock, isDefaultStatblock, resetStatblock,
+  isPinned, togglePinned, pinnedFields, sanitizePinned,
   ROLEPLAY_SKILLS, roleplay, resolve, summary
 };
 

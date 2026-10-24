@@ -1205,3 +1205,11 @@ A location opened as a card or full page (from a mention, a "present here" chip)
 - Summary is labelled "(not shown in Play …)": it is only used for searching in Create and as the hover preview when an entity has no general notes.
 - Notion links: a pasted https:// link is now converted to notion:// when an entity is opened in Play (before, only the Alt+S Notion button converted). `notion:open` converts in main too; it uses Notion.exe when found (path now editable in Settings > Notion links), otherwise `shell.openExternal` hands the notion:// link to whatever app the system has registered.
 - TODO (future): Windows exe is unsigned, so Chrome/SmartScreen warn on download. Add a README note, SHA-256 checksum in the release step, attach the exe to the Release, consider SignPath Foundation code signing.
+
+### v110
+- Stat block number fields (AC, HP, ability scores, passive overrides) are plain text fields with a numeric keypad hint instead of `type=number` (`ccNumKey`): digits from either keyboard row type normally, other characters are blocked, Up/Down still step by one. Type=number spinners react to the numpad arrows when NumLock is off and are easy to nudge by accident.
+- Pin icon next to every voice and personality field (`characterCard.pinned`, e.g. `voice.pitch`): pinned fields that have content also show on the NPC's quick card in Play (the strip under the name), not only on the full character card. Empty pinned fields stay hidden.
+
+### v111
+- Skills can carry a custom bonus (`statblock.skillOverrides`, e.g. `{ Perception: 9 }`): right-click or Shift+click a skill in the stat block editor, type a number, Enter (Auto = back to calculated). It replaces the calculated bonus everywhere (card, quick strip, passive Perception/Insight when automatic), shows with a `*`, and a plain click still cycles proficiency.
+- Fix: the transfer window's "Choose campaigns" dialog opened behind the transfer window (z-index 850 vs 1100); now 1250.
