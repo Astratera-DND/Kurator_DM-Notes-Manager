@@ -1213,3 +1213,16 @@ A location opened as a card or full page (from a mention, a "present here" chip)
 ### v111
 - Skills can carry a custom bonus (`statblock.skillOverrides`, e.g. `{ Perception: 9 }`): right-click or Shift+click a skill in the stat block editor, type a number, Enter (Auto = back to calculated). It replaces the calculated bonus everywhere (card, quick strip, passive Perception/Insight when automatic), shows with a `*`, and a plain click still cycles proficiency.
 - Fix: the transfer window's "Choose campaigns" dialog opened behind the transfer window (z-index 850 vs 1100); now 1250.
+
+### v112
+- Ctrl+K / search in Create is tab-aware (`createJumpToEntity`, `createJumpToContent` in `renderer/app.js`): results jump to the entry in the active Create subtab (Entities, Scenes & places, Library, Graph) and scroll it into view (`scrollCreateTo`). Play behaviour unchanged.
+- "Present here" tags scroll down to the entity editor.
+- Play NPC card → Edit scrolls to the Character card section (`#cc-editor-anchor`).
+- Category icons `voice`, `persona`, `statblock` in the character card headings, section headers, pin buttons and pinned rows on the quick strip.
+- Stat block editor: hover help on every stat (`ABILITY_HELP`, `SKILL_HELP` in `src/characterCard.js`, `SB_HELP` in app.js) with a small "?" marker.
+
+### v113
+- Clicking a spoken quote (SAY) in Play opens its speaker like clicking a mention.
+
+### v114
+- Play: ticking "Mark as read" on a location description now collapses it to a struck-through "Description (read)" line (like finished beats) instead of only marking it; unticking restores the text.

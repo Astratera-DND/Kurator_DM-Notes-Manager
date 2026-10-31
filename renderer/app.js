@@ -72,6 +72,9 @@ let ui = {
 
 function icon(name) {
   const paths = {
+    voice: '<path d="M4 5h16v10H9l-4 4v-4H4z"/><path d="M8 9h8M8 12h5"/>',
+    persona: '<circle cx="12" cy="12" r="9"/><path d="M8 14c1 1.6 2.4 2.4 4 2.4s3-.8 4-2.4"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/>',
+    statblock: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
     pin: '<path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/>',
     idcard: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4M6 16c.6-1.6 4.4-1.6 5 0"/>',
     chevronDown: '<path d="M6 9l6 6 6-6"/>',
@@ -1090,6 +1093,13 @@ function renderLocationContentHTML(view) {
   }
 
   if (view.arrival) {
+    if (view.descriptionModuleId && view.descriptionComplete) {
+      // Read: collapse to a struck-through line like finished beats; unticking brings the text back.
+      html += `<label class="carried-row" data-mod="${view.descriptionModuleId}" style="margin-bottom:10px">
+        <input type="checkbox" checked onchange="window.app.toggleModuleComplete('${view.descriptionModuleId}',this.checked)">
+        <span class="beat-label" style="text-decoration:line-through;color:var(--text-muted)">Description (read)</span>${questTagHTML(view.descriptionModuleId)}
+      </label>`;
+    } else {
     if (view.descriptionModuleId) html += questTagLine(view.descriptionModuleId);
     html += `<p class="narrative"${view.descriptionModuleId ? ` data-mod="${view.descriptionModuleId}"` : ''}>${view.html}</p>`;
     if (view.descriptionModuleId) {
@@ -1097,6 +1107,7 @@ function renderLocationContentHTML(view) {
         <input type="checkbox" ${view.descriptionComplete ? 'checked' : ''} onchange="window.app.toggleModuleComplete('${view.descriptionModuleId}',this.checked)">
         <span class="beat-label">Mark as read</span>
       </label>`;
+    }
     }
 
     if (view.scenes.length > 0) {
@@ -2087,10 +2098,10 @@ function renderCharacterCardHTML(entity) {
       <div class="cc-facts">Passive Perception <b>${rp.passivePerception}</b> · Passive Insight <b>${rp.passiveInsight}</b>${rp.languages ? ` · ${esc(rp.languages)}` : ''}</div>
     </div>
   </div>`;
-  html += voice ? `<div class="cc-h">Voice</div><div class="cc-notes">${voice}</div>` : '';
-  html += rest ? `<div class="cc-h">Personality</div><div class="cc-notes">${rest}</div>` : '';
+  html += voice ? `<div class="cc-h">${icon('voice')} Voice</div><div class="cc-notes">${voice}</div>` : '';
+  html += rest ? `<div class="cc-h">${icon('persona')} Personality</div><div class="cc-notes">${rest}</div>` : '';
   if (!voice && !rest && !quick.length) html += `<p class="hint">No voice or personality notes yet — add them in Create mode.</p>`;
-  html += `<div class="cc-h">Stat block${CC.isDefaultStatblock(entity) ? ' <span class="cc-default-tag">default Villager</span>' : ''}</div>`;
+  html += `<div class="cc-h">${icon('statblock')} Stat block${CC.isDefaultStatblock(entity) ? ' <span class="cc-default-tag">default Villager</span>' : ''}</div>`;
   html += renderStatblockHTML(CC.getStatblock(entity));
   return html;
 }
@@ -2112,7 +2123,7 @@ function renderRoleplayStripHTML(entity) {
     <span class="cc-rp-chip cc-rp-passive${rp.passiveInsightManual ? ' manual' : ''}"${rp.passiveInsightManual ? ' title="Set by hand"' : ''}>Passive Insight <b>${rp.passiveInsight}</b></span>
     ${rp.skills.map(skill).join('')}
     ${rp.languages ? `<span class="cc-rp-chip cc-rp-lang">${esc(rp.languages)}</span>` : ''}
-    ${window.CharacterCard.pinnedFields(entity).map((f) => `<div class="cc-rp-pinrow"><span class="cc-rp-pinlabel">${esc(f.label)}</span> ${esc(f.text)}</div>`).join('')}
+    ${window.CharacterCard.pinnedFields(entity).map((f) => `<div class="cc-rp-pinrow"><span class="cc-rp-pinlabel">${icon(f.group === 'voice' ? 'voice' : 'persona')} ${esc(f.label)}</span> ${esc(f.text)}</div>`).join('')}
   </div>`;
 }
 
@@ -2121,7 +2132,7 @@ function renderCardTextFieldsHTML(entity, group, fields) {
   return `<div class="cc-fields">` + fields.map((f) => {
     const attrs = `placeholder="${esc(f.placeholder)}" oninput="window.app.onCardTextInput('${entity.id}','${group}','${f.key}',this.value)"`;
     const pinned = window.CharacterCard.isPinned(entity, group, f.key);
-    const pin = `<button type="button" class="cc-pin${pinned ? ' on' : ''}" data-pin="${group}.${f.key}" title="${pinned ? 'Shown on the quick card in Play (click to remove)' : 'Also show this on the quick card in Play'}" onclick="window.app.toggleCardPin('${entity.id}','${group}','${f.key}',this)">${icon('pin')}</button>`;
+    const pin = `<button type="button" class="cc-pin${pinned ? ' on' : ''}" data-pin="${group}.${f.key}" title="${pinned ? 'Shown on the quick card in Play (click to remove)' : 'Also show this on the quick card in Play'}" onclick="window.app.toggleCardPin('${entity.id}','${group}','${f.key}',this)">${icon(group === 'voice' ? 'voice' : 'persona')}</button>`;
     return `<div class="form-row${f.long ? ' cc-long' : ''}"><label>${esc(f.label)} ${pin}</label>${f.long
       ? `<textarea style="min-height:44px" ${attrs}>${esc(values[f.key] || '')}</textarea>`
       : `<input type="text" value="${esc(values[f.key] || '')}" ${attrs}>`}</div>`;
@@ -2130,7 +2141,7 @@ function renderCardTextFieldsHTML(entity, group, fields) {
 
 function renderSkillButtonsHTML(entity) {
   const r = window.CharacterCard.resolve(window.CharacterCard.getStatblock(entity));
-  return r.skills.map((k) => `<button class="cc-skillbtn${k.level === 1 ? ' prof' : ''}${k.level === 2 ? ' expert' : ''}${k.manual ? ' manual' : ''}" title="${k.manual ? `Set by hand (calculated: ${k.autoText}). Right-click or Shift+click to change or clear` : 'Click to cycle: none, proficient, expertise. Right-click or Shift+click to type a custom bonus'}" onclick="window.app.cycleCardSkill('${entity.id}','${esc(k.name)}',event)" oncontextmenu="window.app.skillOverrideOpen(event,'${entity.id}','${esc(k.name)}')">
+  return r.skills.map((k) => `<button class="cc-skillbtn${k.level === 1 ? ' prof' : ''}${k.level === 2 ? ' expert' : ''}${k.manual ? ' manual' : ''}" title="${esc((window.CharacterCard.SKILL_HELP[k.name] || '') + '\n\n')}${k.manual ? `Set by hand (calculated: ${k.autoText}). Right-click or Shift+click to change or clear` : 'Click to cycle: none, proficient, expertise. Right-click or Shift+click to type a custom bonus'}" onclick="window.app.cycleCardSkill('${entity.id}','${esc(k.name)}',event)" oncontextmenu="window.app.skillOverrideOpen(event,'${entity.id}','${esc(k.name)}')">
       <span>${esc(k.name)} <small>${k.ability.toUpperCase()}</small></span><b>${k.bonusText}${k.manual ? '*' : (k.level === 2 ? ' ★' : '')}</b></button>`).join('');
 }
 
@@ -2152,16 +2163,38 @@ function ccNumKey(ev) {
 function ccSkillOverrideClose() { const b = document.getElementById('cc-skill-override'); if (b) b.remove(); document.removeEventListener('mousedown', ccSkillOverrideOutside, true); }
 function ccSkillOverrideOutside(ev) { if (!ev.target.closest || !ev.target.closest('#cc-skill-override')) ccSkillOverrideClose(); }
 
+const SB_HELP = {
+  size: 'Size category: how much space the creature takes up (Tiny to Gargantuan). Medium is a typical human.',
+  creatureType: 'Creature type, e.g. Humanoid, Beast, Construct, Undead. Some spells and effects care about it.',
+  alignment: 'Moral and ethical outlook, e.g. Neutral, Lawful Good, Chaotic Evil. A roleplay guide, not a rule.',
+  ac: 'Armor Class: how hard this creature is to hit. An attack roll must meet or beat it. 10 is unarmored; heavy armor reaches 18 or more.',
+  hp: 'Hit Points: how much damage it can take before dropping to 0.',
+  hpDice: 'The dice that give the average hit points, e.g. 2d8+2. Informational: use it if you roll HP instead of using the average.',
+  speed: 'How far it moves in one turn, e.g. 30 ft. Can list other modes: fly 60 ft., swim 30 ft.',
+  cr: 'Challenge Rating: how dangerous it is as an opponent. 0 is harmless, 1/8 a bandit, 1 a party of level 1 can handle. It also sets the proficiency bonus.',
+  pb: 'Proficiency Bonus: added to skills and saves the creature is proficient in. It follows the Challenge Rating (+2 up to CR 4, +3 at CR 5, and so on).',
+  senses: 'Special senses such as darkvision 60 ft., blindsight, tremorsense. Passive Perception is added automatically.',
+  languages: 'Languages it speaks or understands.',
+  passivePerception: 'Passive Perception: 10 + the Perception bonus. What it notices without actively looking. Compare it to a player\'s Stealth roll.',
+  passiveInsight: 'Passive Insight: 10 + the Insight bonus. How well it sees through lies and reads intentions without trying. Compare it to a player\'s Deception roll.',
+  gear: 'Equipment it carries: armor, weapons, tools, trinkets.',
+  traits: 'Passive features that are always on (resistances, special senses, abilities that need no action).',
+  actions: 'What it can do on its turn: attacks with their bonus to hit and damage, and special actions.',
+  save: 'Saving throw: a roll to resist an effect. Tick the box if the creature is proficient (adds the proficiency bonus).',
+  mod: 'The ability modifier, from the score: (score - 10) / 2, rounded down. This is what gets added to rolls.'
+};
+const sbHelp = (k) => ` title="${esc(SB_HELP[k] || '')}"`;
+
 function renderStatblockFormHTML(entity) {
   const CC = window.CharacterCard;
   const sb = entity.characterCard.statblock;
   const id = entity.id;
-  const text = (field, label, wide) => `<div class="form-row${wide ? ' cc-wide' : ''}"><label>${label}</label><input type="text" value="${esc(sb[field])}" oninput="window.app.onStatblockInput('${id}','${field}',this.value)"></div>`;
-  const num = (field, label) => `<div class="form-row"><label>${label}</label><input type="text" inputmode="numeric" autocomplete="off" onkeydown="ccNumKey(event)" value="${sb[field]}" oninput="window.app.onStatblockInput('${id}','${field}',this.value)" onchange="window.app.onStatblockChange('${id}','${field}',this)"></div>`;
+  const text = (field, label, wide) => `<div class="form-row${wide ? ' cc-wide' : ''}"><label${sbHelp(field)}>${label} <span class="cc-q">?</span></label><input type="text" value="${esc(sb[field])}" oninput="window.app.onStatblockInput('${id}','${field}',this.value)"></div>`;
+  const num = (field, label) => `<div class="form-row"><label${sbHelp(field)}>${label} <span class="cc-q">?</span></label><input type="text" inputmode="numeric" autocomplete="off" onkeydown="ccNumKey(event)" value="${sb[field]}" oninput="window.app.onStatblockInput('${id}','${field}',this.value)" onchange="window.app.onStatblockChange('${id}','${field}',this)"></div>`;
   const r = CC.resolve(sb);
   return `<div class="cc-form">
     <div class="cc-grid3">
-      <div class="form-row"><label>Size</label><select onchange="window.app.onStatblockInput('${id}','size',this.value)">${CC.SIZES.map((z) => `<option ${sb.size === z ? 'selected' : ''}>${z}</option>`).join('')}</select></div>
+      <div class="form-row"><label${sbHelp('size')}>Size <span class="cc-q">?</span></label><select onchange="window.app.onStatblockInput('${id}','size',this.value)">${CC.SIZES.map((z) => `<option ${sb.size === z ? 'selected' : ''}>${z}</option>`).join('')}</select></div>
       ${text('creatureType', 'Type')}
       ${text('alignment', 'Alignment')}
     </div>
@@ -2173,14 +2206,14 @@ function renderStatblockFormHTML(entity) {
     <div class="cc-grid3">
       ${text('speed', 'Speed')}
       ${text('cr', 'Challenge (CR)')}
-      <div class="form-row"><label>Proficiency</label><div class="cc-pb" id="cc-pb">${r.pbText}</div></div>
+      <div class="form-row"><label${sbHelp('pb')}>Proficiency <span class="cc-q">?</span></label><div class="cc-pb" id="cc-pb">${r.pbText}</div></div>
     </div>
     <div class="cc-abil-grid">
       ${r.abilities.map((a) => `<div class="cc-abil">
-        <label>${a.label}</label>
+        <label title="${esc(window.CharacterCard.ABILITY_HELP[a.key])}">${a.label} <span class="cc-q">?</span></label>
         <input type="text" inputmode="numeric" autocomplete="off" onkeydown="ccNumKey(event)" value="${a.score}" oninput="window.app.onStatblockInput('${id}','abilities.${a.key}',this.value)" onchange="window.app.onStatblockChange('${id}','abilities.${a.key}',this)">
-        <div class="cc-mod" data-key="${a.key}">${a.modText}</div>
-        <label class="cc-save"><input type="checkbox" ${a.saveProf ? 'checked' : ''} onchange="window.app.toggleCardSave('${id}','${a.key}',this.checked)"> save <span class="cc-savebonus" data-key="${a.key}">${a.saveText}</span></label>
+        <div class="cc-mod" data-key="${a.key}" title="${esc(SB_HELP.mod)}">${a.modText}</div>
+        <label class="cc-save" title="${esc(SB_HELP.save)}"><input type="checkbox" ${a.saveProf ? 'checked' : ''} onchange="window.app.toggleCardSave('${id}','${a.key}',this.checked)"> save <span class="cc-savebonus" data-key="${a.key}">${a.saveText}</span></label>
       </div>`).join('')}
     </div>
     <div class="cc-h">Skills <span class="hint" style="display:inline;margin:0">click to cycle none → proficient → expertise · right-click (or Shift+click) to type a custom bonus</span></div>
@@ -2190,15 +2223,15 @@ function renderStatblockFormHTML(entity) {
       ${text('languages', 'Languages')}
     </div>
     <div class="cc-grid2">
-      <div class="form-row"><label>Passive Perception <span class="cc-auto" id="cc-auto-pp">${r.passivePerceptionManual ? `(auto ${r.passivePerceptionAuto})` : '(auto)'}</span></label>
+      <div class="form-row"><label${sbHelp('passivePerception')}>Passive Perception <span class="cc-q">?</span> <span class="cc-auto" id="cc-auto-pp">${r.passivePerceptionManual ? `(auto ${r.passivePerceptionAuto})` : '(auto)'}</span></label>
         <input type="text" inputmode="numeric" autocomplete="off" onkeydown="ccNumKey(event)" id="cc-pp-input" value="${sb.passivePerceptionOverride == null ? '' : sb.passivePerceptionOverride}" placeholder="auto (${r.passivePerceptionAuto})" oninput="window.app.onStatblockInput('${id}','passivePerceptionOverride',this.value)"></div>
-      <div class="form-row"><label>Passive Insight <span class="cc-auto" id="cc-auto-pi">${r.passiveInsightManual ? `(auto ${r.passiveInsightAuto})` : '(auto)'}</span></label>
+      <div class="form-row"><label${sbHelp('passiveInsight')}>Passive Insight <span class="cc-q">?</span> <span class="cc-auto" id="cc-auto-pi">${r.passiveInsightManual ? `(auto ${r.passiveInsightAuto})` : '(auto)'}</span></label>
         <input type="text" inputmode="numeric" autocomplete="off" onkeydown="ccNumKey(event)" id="cc-pi-input" value="${sb.passiveInsightOverride == null ? '' : sb.passiveInsightOverride}" placeholder="auto (${r.passiveInsightAuto})" oninput="window.app.onStatblockInput('${id}','passiveInsightOverride',this.value)"></div>
     </div>
     <div class="hint" style="margin:-2px 0 6px">Passive scores calculate themselves from the skills. Type a number to override one (story, magic items, other bonuses); clear the field to go back to automatic.</div>
     ${text('gear', 'Gear', true)}
-    <div class="form-row"><label>Traits</label><textarea style="min-height:60px" oninput="window.app.onStatblockInput('${id}','traits',this.value)">${esc(sb.traits)}</textarea></div>
-    <div class="form-row"><label>Actions</label><textarea style="min-height:60px" oninput="window.app.onStatblockInput('${id}','actions',this.value)">${esc(sb.actions)}</textarea></div>
+    <div class="form-row"><label${sbHelp('traits')}>Traits <span class="cc-q">?</span></label><textarea style="min-height:60px" oninput="window.app.onStatblockInput('${id}','traits',this.value)">${esc(sb.traits)}</textarea></div>
+    <div class="form-row"><label${sbHelp('actions')}>Actions <span class="cc-q">?</span></label><textarea style="min-height:60px" oninput="window.app.onStatblockInput('${id}','actions',this.value)">${esc(sb.actions)}</textarea></div>
   </div>`;
 }
 
@@ -2207,10 +2240,11 @@ function cardFilledCount(group, fields) {
 }
 
 function cardSectionHTML(key, title, meta, bodyHTML) {
+  const catIcon = key === 'voice' ? 'voice' : key === 'persona' ? 'persona' : 'statblock';
   const open = !!ui.cardSections[key];
   return `<div class="cc-section">
     <div class="cc-sec-head" id="cc-sec-head-${key}" onclick="window.app.toggleCardSection('${key}')">
-      <span class="cc-sec-caret">${icon(open ? 'chevronDown' : 'chevronRight')}</span><span class="cc-sec-title">${title}</span><span class="cc-sec-meta">${meta}</span>
+      <span class="cc-sec-caret">${icon(open ? 'chevronDown' : 'chevronRight')}</span><span class="cc-sec-icon">${icon(catIcon)}</span><span class="cc-sec-title">${title}</span><span class="cc-sec-meta">${meta}</span>
     </div>
     <div class="cc-sec-body" id="cc-sec-${key}" style="display:${open ? 'block' : 'none'}">${bodyHTML}</div>
   </div>`;
@@ -2227,7 +2261,7 @@ function renderCharacterCardEditorHTML(entity) {
   const sum = CC.summary(entity);
   const r = CC.resolve(CC.getStatblock(entity));
   const meta = (n, total) => (n ? `${n} of ${total} filled` : 'empty');
-  return `<div class="section-label">Character card</div>
+  return `<div class="section-label" id="cc-editor-anchor">Character card</div>
     ${cardSectionHTML('voice', 'Voice', meta(nVoice, CC.VOICE_FIELDS.length), renderCardTextFieldsHTML(entity, 'voice', CC.VOICE_FIELDS))}
     ${cardSectionHTML('persona', 'Personality', meta(nPersona, CC.PERSONA_FIELDS.length), renderCardTextFieldsHTML(entity, 'persona', CC.PERSONA_FIELDS))}
     ${cardSectionHTML('statblock', 'Stat block', sum.isDefault ? 'Villager (default)' : 'customized', `
@@ -3030,7 +3064,7 @@ function renderContentEditor() {
     <div class="section-label">Scene (linear dialogue)</div>
     <p class="hint">A scripted exchange that plays out in order — separate from an NPC's reactive dialogue topics. Marking it complete resolves the whole scene at once, not line by line.</p>
     ${scenesHere.map((scene) => `
-      <div class="scene-editor">
+      <div class="scene-editor" id="${scene.moduleId}">
         <div class="inline" style="margin-bottom:10px">
           <input type="text" value="${esc(scene.name)}" style="flex:1" oninput="window.app.onSceneLabelInput('${scene.moduleId}',this.value)">${questTagHTML(scene.moduleId)}
           <button class="mini-btn" title="Delete scene" onclick="window.app.deleteContentModuleUI('${scene.moduleId}')">${icon('trash')}</button>
@@ -4797,7 +4831,69 @@ function pickerSourceItems(mode) {
 // Goes to the entity a piece of content is assigned to and lands on that exact
 // section: switches to its checkpoint when needed, expands it, scrolls it into
 // view and flashes it.
+// --- Create-mode jumps ----------------------------------------------------------------------
+// Search (Ctrl+K) and the "Present here" tags land on the exact place in the Create tab you are on,
+// and scroll there (the editors sit below their lists, so landing on the right entry is not enough).
+function scrollCreateTo(target, opts) {
+  const find = typeof target === 'function' ? target : () => document.querySelector(target);
+  const tryScroll = (n) => {
+    const el = find();
+    if (!el) { if (n < 6) setTimeout(() => tryScroll(n + 1), 80); return; }
+    el.scrollIntoView({ behavior: 'smooth', block: (opts && opts.block) || 'start' });
+    if (!opts || opts.flash !== false) { el.classList.add('search-flash'); setTimeout(() => el.classList.remove('search-flash'), 2200); }
+  };
+  setTimeout(() => tryScroll(0), 90);
+}
+
+function createJumpToEntity(entityId) {
+  const e = campaign.entities[entityId];
+  if (!e) return;
+  ui.mode = 'create';
+  const tab = ui.createTab;
+  if (tab === 'graph') { window.app.showInGraph(entityId); return; }
+  if (tab === 'content' && e.type === 'location') {
+    ui.createContentLocationId = entityId; campaign.meta.lastContentLocationId = entityId;
+    ui.locSearch = ''; ui.locHighlight = null; ui.pasteReview = null;
+    scheduleFieldSave('content-location');
+    renderAll();
+    scrollCreateTo('#content-editor, #arr-text', { block: 'start' });
+    return;
+  }
+  ui.createTab = 'entities'; ui.createSelectedEntityId = entityId;
+  renderAll();
+  scrollCreateTo('#entity-editor', { block: 'start', flash: false });
+}
+
+function createJumpToContent(moduleId, assignment) {
+  const module = campaign.contentModules.find((m) => m.id === moduleId);
+  const entity = assignment && campaign.entities[assignment.entityId];
+  if (!module) return;
+  ui.mode = 'create';
+  const el = () => document.getElementById(moduleId) || document.querySelector(`[data-mod="${moduleId}"]`)
+    || (module.type === 'description' ? document.getElementById('arr-text') : null);
+  if (ui.createTab === 'graph') { window.app.showInGraph(moduleId); return; }
+  if (ui.createTab === 'library') {
+    ui.librarySelectedModuleId = moduleId; ui.libraryAssignPickerOpen = false;
+    renderAll();
+    scrollCreateTo(() => document.querySelector('.library-row.selected'), { block: 'start' });
+    return;
+  }
+  if (ui.createTab === 'content' && entity && entity.type === 'location') {
+    ui.createContentLocationId = entity.id; campaign.meta.lastContentLocationId = entity.id;
+    if (assignment.timeId && campaign.checkpoints.some((c) => c.id === assignment.timeId)) { ui.createContentTimeId = assignment.timeId; campaign.meta.lastContentTimeId = assignment.timeId; }
+    ui.locSearch = ''; ui.locHighlight = null; ui.pasteReview = null;
+    scheduleFieldSave('content-location');
+    renderAll();
+    scrollCreateTo(el, { block: 'center' });
+    return;
+  }
+  if (entity) { ui.createTab = 'entities'; ui.createSelectedEntityId = entity.id; }
+  renderAll();
+  scrollCreateTo(el, { block: 'center' });
+}
+
 function jumpToContent(moduleId, assignment) {
+  if (ui.mode === 'create') { createJumpToContent(moduleId, assignment); return; }
   const entity = campaign.entities[assignment.entityId];
   const module = campaign.contentModules.find((m) => m.id === moduleId);
   if (!entity || !module) return;
@@ -5099,9 +5195,7 @@ window.app = {
       window.app.jumpNpc(it.id);
     } else if (mode === 'omni') {
       if (ui.mode === 'create') {
-        ui.createTab = 'entities';
-        ui.createSelectedEntityId = it.id;
-        renderAll();
+        createJumpToEntity(it.id);
       } else if (it.entity.type === 'location') {
         window.app.selectLocation(it.id);
       } else {
@@ -5939,7 +6033,7 @@ window.app = {
   },
 
   // Content tab, "Present here" preview: jump to that entity's editor.
-  editEntityFromPreview(id) { ui.createTab = 'entities'; ui.createSelectedEntityId = id; ui.mode = 'create'; renderAll(); },
+  editEntityFromPreview(id) { ui.createTab = 'entities'; createJumpToEntity(id); },
   selectCreateEntity(id) { ui.createSelectedEntityId = id; renderCreateEntities(); },
   // Opens the create form. If an unfinished one is already waiting (the
   // person wandered off to look at another entity), it is picked up again
@@ -6441,6 +6535,7 @@ window.app = {
     window.app.closeCharacterCard();
     ui.mode = 'create'; ui.createTab = 'entities'; ui.createSelectedEntityId = id;
     renderAll();
+    scrollCreateTo('#cc-editor-anchor', { block: 'start' });
   },
   toggleCardAbility(row) { const body = row.closest('tbody'); if (body) body.classList.toggle('open'); },
   toggleCardAllSkills(btn) {
@@ -7777,3 +7872,14 @@ document.addEventListener('mouseout', (ev) => {
   hideHoverCard();
 });
 document.addEventListener('mousedown', hideHoverCard, true);
+
+// Clicking a spoken quote opens its speaker, same as clicking a mention (pills and links
+// inside the quote keep their own click behaviour).
+document.addEventListener('click', (ev) => {
+  const q = ev.target.closest && ev.target.closest('.inline-quote[data-hover]');
+  if (!q || ui.mode !== 'play') return;
+  if (ev.target.closest('button, a')) return;
+  if (window.getSelection && String(window.getSelection()).length) return;   // selecting text, not clicking
+  const id = q.dataset.hover;
+  if (campaign.entities[id]) { hideHoverCard(); window.app.openEntity(id); }
+});

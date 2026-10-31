@@ -23,6 +23,36 @@ const ABILITIES = [
   { key: 'cha', label: 'CHA', name: 'Charisma' }
 ];
 
+// Plain-language help for the editor (shown on hover).
+const ABILITY_HELP = {
+  str: 'Strength: raw physical power. Lifting, shoving, breaking things, climbing, swimming. High: brawny and strong. Low: weak and frail.',
+  dex: 'Dexterity: agility, reflexes and balance. You are nimble and quick. Dodging, aiming, sneaking, initiative, light armor. High: graceful. Low: clumsy.',
+  con: 'Constitution: health, stamina and toughness. Hit points, enduring poison and exhaustion, holding your breath. High: hardy. Low: sickly.',
+  int: 'Intelligence: reasoning, memory and learning. Book knowledge, investigating, magic lore, puzzles. High: sharp and well read. Low: slow to grasp things.',
+  wis: 'Wisdom: awareness, intuition and common sense. Noticing things, reading people, survival instincts, willpower. High: perceptive and grounded. Low: oblivious or easily fooled.',
+  cha: 'Charisma: force of personality, charm and confidence. Persuading, deceiving, intimidating, performing. High: magnetic. Low: awkward or off-putting.'
+};
+const SKILL_HELP = {
+  'Acrobatics': 'Balance, tumbling, flips, staying on your feet on ice or a ledge, escaping a grapple with agility.',
+  'Animal Handling': 'Calming, steering or reading an animal, controlling a mount, sensing an animal\'s mood.',
+  'Arcana': 'Knowledge of magic, spells, magic items, planes and arcane symbols.',
+  'Athletics': 'Climbing, swimming, jumping, shoving, grappling: feats of raw physical effort.',
+  'Deception': 'Lying convincingly, disguising the truth, bluffing, misleading with words or manner.',
+  'History': 'Recalling events, people, wars, cultures and old legends.',
+  'Insight': 'Reading intentions: spotting a lie, sensing nerves, guessing what someone really wants.',
+  'Intimidation': 'Influencing through threats, menace or a show of force.',
+  'Investigation': 'Searching for clues, deducing from evidence, finding hidden mechanisms, working out how things fit together.',
+  'Medicine': 'Stabilising the dying, diagnosing illness, treating wounds.',
+  'Nature': 'Knowledge of terrain, plants, animals, weather and natural cycles.',
+  'Perception': 'Noticing things with your senses: spotting, hearing or smelling something hidden or approaching.',
+  'Performance': 'Entertaining with music, acting, storytelling or dance.',
+  'Persuasion': 'Influencing with tact, goodwill and honest argument; negotiating and charming.',
+  'Religion': 'Knowledge of gods, rites, holy symbols, cults and the afterlife.',
+  'Sleight of Hand': 'Picking pockets, palming objects, planting items, delicate manual tricks.',
+  'Stealth': 'Moving quietly, hiding and staying unseen.',
+  'Survival': 'Tracking, hunting, foraging, finding your way and avoiding natural hazards.'
+};
+
 const SKILLS = [
   { name: 'Acrobatics', ability: 'dex' },
   { name: 'Animal Handling', ability: 'wis' },
@@ -311,7 +341,7 @@ function summary(entity) {
 }
 
 const api = {
-  ABILITIES, SKILLS, VOICE_FIELDS, PERSONA_FIELDS, SIZES,
+  ABILITY_HELP, SKILL_HELP, ABILITIES, SKILLS, VOICE_FIELDS, PERSONA_FIELDS, SIZES,
   abilityMod, fmt, crToNumber, proficiencyBonusForCR,
   defaultStatblock, sanitizeStatblock, sanitizeCard, ensureCard,
   hasVoiceOrPersona, getStatblock, ensureStatblock, isDefaultStatblock, resetStatblock,

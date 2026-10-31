@@ -127,6 +127,7 @@ textarea:focus { min-height: 220px; }
 .field-label:first-child { margin-top: 0; }
 .field-text { font-size: 15px; line-height: 1.65; color: var(--text-primary); margin: 0; }
 .inline-quote { color: var(--accent-fg); }
+.inline-quote[data-hover] { cursor: pointer; }
 .jump-link { display: inline-flex; align-items: center; gap: 3px; color: var(--accent-fg); background: var(--accent-bg); border-radius: 4px; padding: 1px 6px; cursor: pointer; font-size: 0.95em; }
 .jump-link::before { content: "→"; }
 .jump-link:hover { text-decoration: underline; }
@@ -915,3 +916,10 @@ textarea.tf-fullscreen {
 .cc-skillbtn.manual b, .cc-skill.manual b, .cc-rp-chip.manual b { color: #d9cffb; }
 .cc-skill-override { position: fixed; z-index: 1400; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.45); padding: 8px 10px; }
 .cc-so-title { font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+
+.cc-sec-icon { display: inline-flex; margin-right: 6px; color: #f0cf7a; }
+.cc-sec-icon svg, .cc-h svg, .cc-rp-pinlabel svg { width: 14px; height: 14px; vertical-align: -2px; }
+.cc-h svg { color: #f0cf7a; margin-right: 2px; }
+.cc-rp-pinlabel svg { margin-right: 2px; }
+
+.cc-q { display: inline-block; width: 13px; height: 13px; line-height: 13px; text-align: center; font-size: 9px; font-weight: 700; border-radius: 50%; border: 1px solid var(--border-strong); color: var(--text-muted); cursor: help; vertical-align: middle; }
