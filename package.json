@@ -1,6 +1,6 @@
 {
   "name": "kurator-session-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Kurator Session Manager — an App for DMs for DND Campaigns, to organize NPCs, Locations and general session notes.",
   "main": "main.js",
   "private": true,
@@ -27,6 +27,8 @@
       "main.js",
       "preload.js",
       "package.json",
+      "LICENSE",
+      "NOTICE.md",
       "src/**/*",
       "renderer/**/*"
     ],

@@ -1,7 +1,7 @@
 name: Build portable Windows app
 
 # Runs when a release is published on GitHub, or by hand from the Actions tab.
-# Tests the code, builds the portable .exe and attaches it to the release.
+# Tests the code, builds the portable .exe and attaches it (plus LICENSE and NOTICE.md) to the release.
 on:
   release:
     types: [published]
@@ -32,4 +32,4 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" release/*.exe --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" release/*.exe LICENSE NOTICE.md --clobber
